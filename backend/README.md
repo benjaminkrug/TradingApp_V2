@@ -19,7 +19,8 @@ Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub,
 - ✅ `app/data/providers/fake.py` — In-Memory-Provider für Tests (Phase 3)
 - 🟡 `app/data/providers/alpaca.py`, `polygon.py` — dokumentierte Stubs, `NotImplementedError`; keine Netzwerk-/Key-Verifikation in dieser Sandbox möglich, siehe `../PHASE3_NOTES.md`
 - ⏳ Produktive Backtest-Engine-Integration (Nautilus Trader oder Alternative) — offen, siehe `../PHASE2_NOTES.md`
-- ⏳ `app/strategies/` — Strategy-Definitionen (Phase 4)
+- ✅ `app/features/indicators.py` — kausale Indikatoren: SMA, EMA, ATR, Session-VWAP, Opening Range (Phase 4)
+- ✅ `app/strategies/` — VWAP Momentum, EMA Pullback, Opening Range Breakout, gegen synthetische Daten end-to-end getestet (Phase 4)
 - ⏳ `app/validation/` — OOS/Walk-Forward/Monte-Carlo-Gates (Phase 5)
 - ⏳ `app/signals/` — Signal Engine & Scoring (Phase 6)
 - ⏳ `app/api/` — FastAPI-Routen (Phase 8)

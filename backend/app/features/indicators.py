@@ -1,0 +1,102 @@
+"""Causal technical indicators.
+
+"Causal" here means every function operates on a history that already
+stops at "now" — the caller is expected to pass `cursor.history` (see
+point_in_time.py), not a full pre-computed series. There is no rolling
+window computed once over an entire series and then indexed into, which is
+exactly the kind of thing that can silently leak a few bars of future data
+if a window boundary is sliced wrong. Every function here recomputes from
+exactly the history it was given, nothing more.
+
+Performance note: `ema_series` recomputes the whole series from scratch on
+every call, which is O(n) per call and O(n^2) if called once per bar over
+a backtest of n bars. Fine for the small, hand-verifiable scenarios these
+strategies are tested against here; would need incremental/stateful
+indicator updates before running this against a real multi-thousand-bar
+backtest — left as a known limitation rather than optimized prematurely.
+
+Only the indicators actually used by the three strategies in
+app/strategies/ are implemented here (EMA, session VWAP, ATR, opening
+range) — not a general TA library. More get added when a strategy
+actually needs them (see PHASE4_NOTES.md).
+"""
+
+from __future__ import annotations
+
+from typing import Optional
+
+from app.data.calendar import NY_TZ
+from app.data.point_in_time import Bar
+
+
+def sma(values: list[float], period: int) -> Optional[float]:
+    if len(values) < period:
+        return None
+    return sum(values[-period:]) / period
+
+
+def ema_series(values: list[float], period: int) -> list[Optional[float]]:
+    """EMA at every index, seeded with the SMA of the first `period`
+    values (classic seeding convention). `None` for indices before enough
+    data exists to seed it."""
+    if period <= 0:
+        raise ValueError("period must be positive")
+    result: list[Optional[float]] = [None] * len(values)
+    if len(values) < period:
+        return result
+    k = 2 / (period + 1)
+    seed = sum(values[:period]) / period
+    result[period - 1] = seed
+    prev = seed
+    for i in range(period, len(values)):
+        prev = values[i] * k + prev * (1 - k)
+        result[i] = prev
+    return result
+
+
+def atr(bars: list[Bar], period: int) -> Optional[float]:
+    """Simple (non-Wilder) moving average of True Range over the last
+    `period` bars. Deliberately the simpler variant, not Wilder's
+    exponential smoothing — documented so nobody assumes the more common
+    Wilder's ATR is what this returns."""
+    if len(bars) < period + 1:
+        return None
+    true_ranges = []
+    for i in range(1, len(bars)):
+        high, low, prev_close = bars[i].high, bars[i].low, bars[i - 1].close
+        tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+        true_ranges.append(tr)
+    if len(true_ranges) < period:
+        return None
+    return sum(true_ranges[-period:]) / period
+
+
+def current_session_bars(bars: list[Bar]) -> list[Bar]:
+    """Bars in `bars` belonging to the same exchange-local (America/New_York)
+    calendar date as the last bar — i.e. "today's bars so far"."""
+    if not bars:
+        return []
+    session_date = bars[-1].timestamp.astimezone(NY_TZ).date()
+    return [b for b in bars if b.timestamp.astimezone(NY_TZ).date() == session_date]
+
+
+def session_vwap(bars: list[Bar]) -> Optional[float]:
+    """Volume-weighted average price over the current session's bars so
+    far (resets every session, per standard practice)."""
+    session_bars = current_session_bars(bars)
+    total_volume = sum(b.volume for b in session_bars)
+    if total_volume == 0:
+        return None
+    weighted = sum(((b.high + b.low + b.close) / 3) * b.volume for b in session_bars)
+    return weighted / total_volume
+
+
+def opening_range(bars: list[Bar], num_bars: int) -> Optional[tuple[float, float]]:
+    """(low, high) of the first `num_bars` bars of the current session.
+    `None` if the current session does not yet have `num_bars` bars in the
+    given history."""
+    session_bars = current_session_bars(bars)
+    if len(session_bars) < num_bars:
+        return None
+    opening = session_bars[:num_bars]
+    return min(b.low for b in opening), max(b.high for b in opening)
