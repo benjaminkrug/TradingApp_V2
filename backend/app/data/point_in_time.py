@@ -34,6 +34,7 @@ class CursorNotStartedError(RuntimeError):
 
 @dataclass(frozen=True)
 class Bar:
+    symbol: str
     timestamp: datetime
     open: float
     high: float
@@ -53,7 +54,7 @@ class Bar:
 
 
 class PointInTimeSeries:
-    """A chronologically ordered, immutable bar series.
+    """A chronologically ordered, immutable, single-symbol bar series.
 
     Storage/query convenience for offline analysis (e.g. "what did we know
     as of 10:35?"). Not handed to strategy code during a backtest — use
@@ -64,6 +65,12 @@ class PointInTimeSeries:
         ordered = sorted(bars, key=lambda b: b.timestamp)
         if ordered != list(bars):
             raise ValueError("bars must be supplied in chronological order")
+        symbols = {b.symbol for b in bars}
+        if len(symbols) > 1:
+            raise ValueError(
+                f"PointInTimeSeries holds bars for exactly one symbol, got {sorted(symbols)}. "
+                "Mixing symbols here would silently corrupt any point-in-time logic built on top."
+            )
         self._bars = list(bars)
 
     def __len__(self) -> int:

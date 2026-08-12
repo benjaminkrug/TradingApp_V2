@@ -8,10 +8,16 @@ Tests ausführen (reine Standardbibliothek, kein `pip install` nötig):
 cd backend && python3 -m unittest discover -s tests -v
 ```
 
-Struktur (✅ = angelegt und getestet, ⏳ = geplant, wird in der genannten Phase befüllt):
+Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub, ⏳ = geplant, wird in der genannten Phase befüllt):
 
 - ✅ `app/data/point_in_time.py` — Point-in-Time-Datenzugriff / Look-Ahead-Schutz (Phase 2)
 - ✅ `app/backtest/reference_engine.py` — Korrektheits-Referenz-Engine, nicht die produktive Engine (Phase 2)
+- ✅ `app/data/calendar.py` — NYSE-Handelskalender, DST-bewusst (Phase 3)
+- ✅ `app/data/corporate_actions.py` — Split-Rückrechnung (Phase 3)
+- ✅ `app/data/universe.py` — Survivorship-bias-sicheres Punkt-in-Zeit-Universum, Mechanismus ohne echte Indexdaten (Phase 3)
+- ✅ `app/data/quality.py` — Data-Quality-Checks (Phase 3)
+- ✅ `app/data/providers/fake.py` — In-Memory-Provider für Tests (Phase 3)
+- 🟡 `app/data/providers/alpaca.py`, `polygon.py` — dokumentierte Stubs, `NotImplementedError`; keine Netzwerk-/Key-Verifikation in dieser Sandbox möglich, siehe `../PHASE3_NOTES.md`
 - ⏳ Produktive Backtest-Engine-Integration (Nautilus Trader oder Alternative) — offen, siehe `../PHASE2_NOTES.md`
 - ⏳ `app/strategies/` — Strategy-Definitionen (Phase 4)
 - ⏳ `app/validation/` — OOS/Walk-Forward/Monte-Carlo-Gates (Phase 5)

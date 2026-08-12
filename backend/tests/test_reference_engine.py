@@ -5,7 +5,7 @@ from app.backtest.reference_engine import run_reference_backtest
 from app.data.point_in_time import Bar, SimulationCursor
 
 
-def make_bars(ohlc: list[tuple[float, float]]) -> list[Bar]:
+def make_bars(ohlc: list[tuple[float, float]], symbol: str = "TEST") -> list[Bar]:
     """ohlc: (open, close) pairs. Deliberately distinct per bar so a test
     would fail if the engine used close instead of open for fills — see
     reference_engine.py's execution-timing model."""
@@ -14,6 +14,7 @@ def make_bars(ohlc: list[tuple[float, float]]) -> list[Bar]:
     for i, (o, c) in enumerate(ohlc):
         bars.append(
             Bar(
+                symbol=symbol,
                 timestamp=start + timedelta(minutes=5 * i),
                 open=o,
                 high=max(o, c),
@@ -56,6 +57,8 @@ class TestReferenceEngineKnownOutcome(unittest.TestCase):
         self.assertAlmostEqual(result.fills[0].price, 102.2, places=6)
         self.assertEqual(result.fills[1].side, "SELL")
         self.assertAlmostEqual(result.fills[1].price, 103.1, places=6)
+        self.assertEqual(result.fills[0].symbol, "TEST")
+        self.assertEqual(result.fills[1].symbol, "TEST")
 
     def test_losing_trade_matches_hand_calculation(self):
         # opens used for fills: bar1.open=48 (BUY), bar3.open=43 (SELL)

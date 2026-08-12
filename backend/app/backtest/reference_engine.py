@@ -42,6 +42,7 @@ SignalFn = Callable[[SimulationCursor], Action]
 
 @dataclass
 class Fill:
+    symbol: str
     timestamp: datetime
     side: Literal["BUY", "SELL"]
     price: float
@@ -79,11 +80,11 @@ def run_reference_backtest(
         if pending_action == "BUY" and position == 0:
             position = 1.0
             entry_price = bar.open
-            result.fills.append(Fill(bar.timestamp, "BUY", bar.open, position, fee_per_share))
+            result.fills.append(Fill(bar.symbol, bar.timestamp, "BUY", bar.open, position, fee_per_share))
         elif pending_action == "SELL" and position > 0:
             pnl = (bar.open - entry_price) * position - 2 * fee_per_share
             result.realized_pnl += pnl
-            result.fills.append(Fill(bar.timestamp, "SELL", bar.open, position, fee_per_share))
+            result.fills.append(Fill(bar.symbol, bar.timestamp, "SELL", bar.open, position, fee_per_share))
             position = 0.0
 
         pending_action = signal_fn(cursor)

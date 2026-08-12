@@ -4,10 +4,11 @@ from datetime import datetime, timedelta, timezone
 from app.data.point_in_time import Bar, CursorNotStartedError, PointInTimeSeries
 
 
-def make_bars(closes: list[float]) -> list[Bar]:
+def make_bars(closes: list[float], symbol: str = "TEST") -> list[Bar]:
     start = datetime(2026, 1, 2, 9, 30, tzinfo=timezone.utc)
     return [
         Bar(
+            symbol=symbol,
             timestamp=start + timedelta(minutes=5 * i),
             open=c,
             high=c,
@@ -23,6 +24,7 @@ class TestBar(unittest.TestCase):
     def test_rejects_naive_datetime(self):
         with self.assertRaises(ValueError):
             Bar(
+                symbol="TEST",
                 timestamp=datetime(2026, 1, 2, 9, 30),  # no tzinfo
                 open=100,
                 high=100,
@@ -44,6 +46,25 @@ class TestPointInTimeSeries(unittest.TestCase):
         series = PointInTimeSeries(bars)
         visible = series.as_of(bars[1].timestamp)
         self.assertEqual([b.close for b in visible], [100, 101])
+
+    def test_rejects_mixed_symbols(self):
+        # chronologically valid (so this exercises the symbol check
+        # specifically, not the ordering check)
+        start = datetime(2026, 1, 2, 9, 30, tzinfo=timezone.utc)
+        bars = [
+            Bar(symbol="AAA", timestamp=start, open=100, high=100, low=100, close=100, volume=1000),
+            Bar(
+                symbol="BBB",
+                timestamp=start + timedelta(minutes=5),
+                open=50,
+                high=50,
+                low=50,
+                close=50,
+                volume=1000,
+            ),
+        ]
+        with self.assertRaises(ValueError):
+            PointInTimeSeries(bars)
 
 
 class TestSimulationCursor(unittest.TestCase):
