@@ -14,7 +14,7 @@ Festgehalten aus `ROADMAP.md`, Abschnitt 3, als Grundlage für die Implementieru
 ## Weitere technische Festlegungen (ROADMAP.md Abschnitt 17)
 
 - Backend: Python + FastAPI
-- Backtesting-Framework: Nautilus Trader (Kandidat, **Installierbarkeit/Version noch nicht verifiziert** — siehe `PHASE2_NOTES.md`; Alternativen: backtrader, zipline-reloaded)
+- Backtesting-Framework: Nautilus Trader 1.231.0, **Installierbarkeit auf GitHub Actions (ubuntu-latest/Python 3.12) verifiziert am 12.08.2026** — siehe `PHASE2_NOTES.md`. Noch nicht als harte Abhängigkeit eingebunden, da noch kein Code darauf aufbaut (folgt Phase 3/4).
 - Datenbank: PostgreSQL + TimescaleDB-Extension für Zeitreihen
 - Cache/Queue: Redis, Celery
 - Frontend: Vue 3 + TypeScript

@@ -29,13 +29,22 @@ Konsequenz für Phase 2: Ich habe den Teil, der sich ohne externe Abhängigkeite
 
   Darunter zwei Tests mit von Hand berechnetem Ergebnis (z. B. Kauf bei Close 102, Verkauf bei Close 103, Fee 0.01/Seite → erwarteter PnL 0.98, exakt geprüft) — das ist der in Abschnitt 9 geforderte "bekannte Testfall", nur eben gegen die Referenz-Engine statt gegen Nautilus Trader.
 
-## Was noch offen ist (nicht vergessen, sondern blockiert durch die Sandbox)
+## Update 12.08.2026: Framework-Entscheidung verifiziert
 
-1. **Framework-Entscheidung verifizieren.** `ROADMAP.md` schlägt Nautilus Trader vor (identischer Codepfad für Backtest/Live/Paper, event-driven, damit strukturell look-ahead-sicher). Das basiert auf meinem Trainingsstand; ob die aktuelle Version, Python-3.11/3.12-Kompatibilität und Installierbarkeit auf der Zielplattform tatsächlich stimmen, konnte ich hier **nicht** live prüfen. `nautilus_trader` ist deshalb bewusst *nicht* in `backend/pyproject.toml` als Abhängigkeit eingetragen (nur als auskommentierter Kandidat), damit CI nicht an einer ungeprüften Annahme scheitert.
-2. **Cross-Validation.** Sobald Nautilus Trader (oder die Alternative) installierbar ist: dieselben Szenarien aus `test_reference_engine.py` dagegen laufen lassen und prüfen, ob das Ergebnis exakt (im Toleranzbereich) übereinstimmt. Erst danach gilt die Engine als vertrauenswürdig für Phase 3+.
-3. **`pip install -e backend/.[dev]` einmal in einer Umgebung mit Internetzugang ausführen** (lokal bei dir oder via CI) — auch `fastapi`, `pandas` etc. sind aus demselben Grund bisher nur deklariert, nicht verifiziert.
-4. CI (`.github/workflows/ci.yml`) installiert aktuell nur `pytest` und führt die stdlib-Tests aus. Ein zweiter Job mit vollständiger Dependency-Installation kommt dazu, sobald Punkt 1–3 geklärt sind.
+Ein nicht-blockierender Probe-Job (`probe-nautilus-trader` in `.github/workflows/ci.yml`) wurde auf einem echten GitHub-Actions-Runner (ubuntu-latest, Python 3.12) ausgeführt — dort besteht, anders als in dieser Sandbox, voller PyPI-Zugriff:
 
-## Empfehlung
+```
+Successfully installed ... nautilus_trader-1.231.0 ...
+nautilus_trader 1.231.0
+```
 
-Diesen offenen Teil entweder (a) du führst `pip install -e backend/.[dev]` einmal lokal aus und meldest das Ergebnis zurück, oder (b) ich öffne einen PR und lasse GitHub Actions es dort verifizieren (volles Internet auf den Runnern). Push auf den Branch reicht, um CI auszulösen — ein PR ist dafür nicht zwingend nötig.
+Run: [31590849328](https://github.com/benjaminkrug/TradingApp_V2/actions/runs/31590849328), Job `probe-nautilus-trader`, `conclusion: success`. Damit ist Punkt 1 unten erledigt — nicht angenommen, sondern auf echter Infrastruktur nachgewiesen.
+
+`nautilus_trader` ist trotzdem bewusst noch **nicht** als harte Abhängigkeit in `backend/pyproject.toml` eingetragen: Es gibt aktuell keinen Code, der es tatsächlich importiert (das kommt erst mit der echten Backtest-Integration, vermutlich Phase 3/4). Es jetzt schon als Pflicht-Dependency zu führen, würde jeden CI-Lauf unnötig verlangsamen, ohne dass etwas davon abhängt — das wird nachgeholt, sobald echter Code darauf aufbaut.
+
+## Was noch offen ist
+
+1. ~~Framework-Entscheidung verifizieren~~ ✅ erledigt, siehe oben.
+2. **Cross-Validation.** Sobald echter Nautilus-Trader-Code existiert (Phase 3/4): dieselben Szenarien aus `test_reference_engine.py` dagegen laufen lassen und prüfen, ob das Ergebnis exakt (im Toleranzbereich) übereinstimmt. Erst danach gilt die Engine als vertrauenswürdig für Live-/Paper-Trading-Entscheidungen.
+3. `fastapi`, `pandas`, `sqlalchemy` etc. in `backend/pyproject.toml` sind aus demselben Sandbox-Grund weiterhin nur deklariert, nicht einzeln verifiziert — aber da `pip` auf GitHub-Runnern nachweislich funktioniert (s. o.), ist das Risiko hier gering.
+4. CI installiert im Hauptjob weiterhin nur `pytest` und führt die stdlib-Tests aus. Ein vollständiger Dependency-Install-Job kommt, sobald Punkt 2 ansteht und echter Code ihn braucht.
