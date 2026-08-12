@@ -91,12 +91,15 @@ def evaluate_candidate(
         )
     )
 
-    # 4: fees
+    # 4: fees. This only checks that a non-zero fee was assumed at all -
+    # it cannot judge whether fee_per_share is itself a realistic amount
+    # for the traded instrument, that's a manual/domain judgment.
     results.append(
         GateCheckResult(
             "realistic_fees",
             "PASS" if fee_per_share > 0 else "FAIL",
-            f"fee_per_share={fee_per_share}",
+            f"fee_per_share={fee_per_share} (checks only that a non-zero fee was assumed, "
+            "not whether this specific amount is realistic)",
         )
     )
 

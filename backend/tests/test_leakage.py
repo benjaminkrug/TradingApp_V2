@@ -77,6 +77,35 @@ class TestDetectLeakageCatchesACheat(unittest.TestCase):
         report = detect_leakage(bars, lambda: CheatingStrategy(), cut_index=10)
         self.assertTrue(report.clean, msg=report.mismatches)
 
+    def test_default_boundary_buffer_catches_a_leak_that_buffer_1_would_miss(self):
+        # Found during the critical re-review of Phase 5: the original
+        # default boundary_buffer=1 excluded one bar's worth of otherwise
+        # perfectly comparable fills from the check. This cheat only
+        # leaks when deciding at bars[cut_index - 2]; the resulting fill
+        # lands at bars[cut_index - 1]'s open, which both runs are fully
+        # capable of producing (no truncation edge case involved) - so a
+        # correct detector must still catch it.
+        class NearBoundaryCheat:
+            def __call__(self, cursor: SimulationCursor) -> str:
+                idx = len(cursor.history) - 1
+                target_idx = idx + 3
+                if target_idx < len(cursor._bars) and cursor._bars[target_idx].close > 1000:
+                    return "BUY"
+                return "HOLD"
+
+        closes = [100.0] * 11 + [2000.0]  # bar 11 (= cut_index + 1) is the only spike
+        bars = make_bars(closes)
+        cut_index = 10
+
+        default_report = detect_leakage(bars, lambda: NearBoundaryCheat(), cut_index=cut_index)
+        self.assertFalse(default_report.clean, msg="default boundary_buffer must catch this leak")
+
+        looser_report = detect_leakage(bars, lambda: NearBoundaryCheat(), cut_index=cut_index, boundary_buffer=1)
+        self.assertTrue(
+            looser_report.clean,
+            msg="documents why boundary_buffer=1 was too loose - it misses the same leak",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

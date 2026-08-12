@@ -26,18 +26,39 @@ class Trade:
 
 
 def trades_from_fills(fills: list[Fill]) -> list[Trade]:
-    """Pairs each BUY with the SELL that closes it. Assumes `fills` came
-    from a single symbol's backtest in chronological order (reference_engine
-    guarantees this: no pyramiding, no shorting - see its own docstring) -
-    an unmatched trailing BUY (position still open at the end of the data)
-    is simply not turned into a Trade, matching reference_engine leaving it
-    unrealized."""
+    """Pairs each BUY with the SELL that closes it. Expects `fills` to have
+    come from a single symbol's backtest in chronological order
+    (reference_engine guarantees this: no pyramiding, no shorting - see its
+    own docstring) - an unmatched trailing BUY (position still open at the
+    end of the data) is simply not turned into a Trade, matching
+    reference_engine leaving it unrealized.
+
+    That expectation is checked, not just assumed: a second BUY while a
+    position is already open, or a SELL for a different symbol than the
+    open position, raises rather than silently mispairing fills (e.g.
+    dropping a position, or pairing a BUY on one symbol with a SELL on
+    another if fills from multiple runs were ever merged together)."""
     trades: list[Trade] = []
     open_fill: Optional[Fill] = None
     for fill in fills:
         if fill.side == "BUY":
+            if open_fill is not None:
+                raise ValueError(
+                    f"trades_from_fills: BUY for {fill.symbol} at {fill.timestamp} arrived while a "
+                    f"position opened at {open_fill.timestamp} ({open_fill.symbol}) was still open. "
+                    "This violates reference_engine's no-pyramiding guarantee - likely fills from "
+                    "multiple symbols or multiple runs were merged together."
+                )
             open_fill = fill
-        elif fill.side == "SELL" and open_fill is not None:
+        elif fill.side == "SELL":
+            if open_fill is None:
+                continue  # matches reference_engine: a SELL with no open position is a no-op
+            if fill.symbol != open_fill.symbol:
+                raise ValueError(
+                    f"trades_from_fills: SELL for {fill.symbol} at {fill.timestamp} does not match "
+                    f"the open position's symbol {open_fill.symbol} - fills from different symbols "
+                    "were likely merged together."
+                )
             pnl = (fill.price - open_fill.price) * open_fill.quantity - open_fill.fee - fill.fee
             trades.append(
                 Trade(

@@ -28,6 +28,20 @@ class TestTradesFromFills(unittest.TestCase):
         # (110-100)*1 - 0.5 - 0.5 = 9.0
         self.assertAlmostEqual(trades[0].pnl, 9.0)
 
+    def test_rejects_a_second_buy_while_a_position_is_open(self):
+        fills = [make_fill("BUY", 100, 0), make_fill("BUY", 105, 1)]
+        with self.assertRaises(ValueError):
+            trades_from_fills(fills)
+
+    def test_rejects_a_sell_for_a_different_symbol_than_the_open_position(self):
+        start = datetime(2026, 1, 2, 9, 30, tzinfo=timezone.utc)
+        fills = [
+            Fill(symbol="AAA", timestamp=start, side="BUY", price=100, quantity=1.0, fee=0.0),
+            Fill(symbol="BBB", timestamp=start + timedelta(minutes=5), side="SELL", price=110, quantity=1.0, fee=0.0),
+        ]
+        with self.assertRaises(ValueError):
+            trades_from_fills(fills)
+
 
 class TestComputeMetrics(unittest.TestCase):
     def test_matches_hand_calculation(self):

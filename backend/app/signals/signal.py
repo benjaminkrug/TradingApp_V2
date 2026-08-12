@@ -13,6 +13,22 @@ ROADMAP.md Abschnitt 16 exists to correct.
 `rationale` is a plain-language, strategy-agnostic explanation (price vs
 VWAP, trend direction, relative volume) — ROADMAP.md Abschnitt 23: never
 show a confidence number without explaining how it came to be.
+
+A note on `entry`, because it is easy to mistake for reference_engine's
+fill price and they are deliberately not the same thing: `entry` here is
+the current bar's close, used as a real-time reference price for a human
+about to place an order on a live/prospective signal - by definition
+there is no "next bar" yet to fill at, unlike in a backtest. This is NOT
+a regression back to the same-bar-close fill assumption that
+reference_engine.py fixed (ROADMAP.md Abschnitt 2/13): that fix was about
+a *backtest* silently pretending it could fill at a price only known
+after the fact. A live signal showing "last price" as a reference is
+standard practice precisely because nothing later is knowable yet.
+The two must not be conflated, though: backtesting a strategy that
+consumes `Signal` objects has to still go through reference_engine's own
+next-bar-open convention to stay comparable to every other backtest in
+this codebase - `build_signal()` is for live signal presentation, not a
+second, competing execution model.
 """
 
 from __future__ import annotations

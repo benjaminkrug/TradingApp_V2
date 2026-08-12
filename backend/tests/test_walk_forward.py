@@ -49,6 +49,22 @@ class TestWalkForwardWindows(unittest.TestCase):
         with self.assertRaises(ValueError):
             walk_forward_windows(bars, train_days=0, test_days=2, step_days=1)
 
+    def test_uses_ny_local_date_not_naive_utc_date(self):
+        # 2026-01-03 02:00 UTC is 2026-01-02 21:00 EST in New York (winter,
+        # UTC-5) - under a naive UTC .date() this bar would be misfiled as
+        # a third distinct calendar day instead of merging into Jan 2nd.
+        bars = [
+            Bar(symbol="TEST", timestamp=datetime(2026, 1, 1, 15, 0, tzinfo=timezone.utc), open=1, high=1, low=1, close=1, volume=1000),
+            Bar(symbol="TEST", timestamp=datetime(2026, 1, 2, 15, 0, tzinfo=timezone.utc), open=1, high=1, low=1, close=1, volume=1000),
+            Bar(symbol="TEST", timestamp=datetime(2026, 1, 3, 2, 0, tzinfo=timezone.utc), open=1, high=1, low=1, close=1, volume=1000),
+        ]
+        # 1 train day + 1 test day, requesting exactly the 2 true NY dates
+        windows = walk_forward_windows(bars, train_days=1, test_days=1, step_days=1)
+        self.assertEqual(len(windows), 1)
+        self.assertEqual(len(windows[0].train), 1)
+        # the Jan-1 bar trains; both later bars (true NY date Jan 2) test together
+        self.assertEqual(len(windows[0].test), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

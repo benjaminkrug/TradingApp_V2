@@ -44,15 +44,34 @@ def fit_logistic_regression(
     outcomes: list[int],
     learning_rate: float = 0.1,
     iterations: int = 2000,
+    l2_penalty: float = 0.1,
 ) -> CalibratedModel:
     """`outcomes` are 0 (losing trade) or 1 (winning trade), same order as
-    `features`. Fits by full-batch gradient descent on log loss."""
+    `features`. Fits by full-batch gradient descent on L2-regularized log
+    loss (the bias term, weights[0], is not penalized - only the feature
+    weights are).
+
+    `l2_penalty` defaults to a conservative non-zero value on purpose.
+    Without it, plain gradient descent on a small and/or (near-)linearly
+    separable sample - exactly the trade-count scale this system realistically
+    calibrates on - drives the weights toward unbounded magnitude rather
+    than converging (confirmed during Phase 6's review: on a 6-example
+    separable sample, the fitted weight kept growing with more iterations
+    instead of settling - 13.8 after 5000 iterations, 17.4 after 20000).
+    That produces overconfident near-0/near-100 scores for any trade
+    matching the separating pattern, which would be a second, self-inflicted
+    overfitting problem inside the very module meant to replace hand-picked,
+    overfit-prone weights (ROADMAP.md Abschnitt 16). Pass 0.0 explicitly to
+    disable regularization if that's ever actually wanted.
+    """
     if len(features) != len(outcomes):
         raise ValueError("features and outcomes must be the same length")
     if not features:
         raise ValueError("cannot fit a model on zero examples")
     if any(o not in (0, 1) for o in outcomes):
         raise ValueError("outcomes must be 0 or 1")
+    if l2_penalty < 0:
+        raise ValueError("l2_penalty cannot be negative")
 
     n_features = len(features[0])
     if any(len(f) != n_features for f in features):
@@ -69,7 +88,8 @@ def fit_logistic_regression(
             gradients[0] += error
             for j, f in enumerate(x):
                 gradients[j + 1] += error * f
-        for j in range(len(weights)):
-            weights[j] -= learning_rate * gradients[j] / n
+        weights[0] -= learning_rate * gradients[0] / n
+        for j in range(1, len(weights)):
+            weights[j] -= learning_rate * (gradients[j] / n + l2_penalty * weights[j])
 
     return CalibratedModel(weights=weights)

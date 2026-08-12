@@ -4,9 +4,11 @@ Festgehalten aus `ROADMAP.md`, Abschnitt 3, als Grundlage für die Implementieru
 
 **Hinweis zum Stand "vorläufig":** #4 und #5 waren ursprünglich Empfehlungen aus der ersten Analyse, nie einzeln vom Nutzer bestätigt — nur der Gesamtplan wurde freigegeben. Bei einer kritischen Nachprüfung am 12.08.2026 wurde das als zu weitgehend markiert: eine Datenanbieter-Wahl (reale Kontoanbindung) und ein Risikoparameter (reales Geld im späteren Live-Betrieb) sind Entscheidungen, die explizit vom Nutzer bestätigt werden sollten, nicht durch stillschweigende Übernahme einer Empfehlung. Code und weitere Phasen bauen bis auf Weiteres trotzdem auf diesen Werten auf — "vorläufig" heißt: gilt als Arbeitsstand, aber offen für Korrektur ohne dass das als Bruch mit einer früheren Zusage zu werten wäre.
 
+Bei der kritischen Nachprüfung von Phase 5/6 (12.08.2026) fiel derselbe Fehler noch einmal auf, diesmal bei #1: Die *Form* der Entscheidung ("~30 liquide Large-Caps, kein Live-Scanner") war bestätigt, aber die konkrete Ticker-Liste in `backend/app/signals/scanner.py` habe ich selbst zusammengestellt, ohne sie dem Nutzer vorzulegen. Dort im Code als "nicht geprüfte Beispielliste" dokumentiert, hier zur Konsistenz ebenfalls als vorläufig nachgetragen.
+
 | # | Frage | Entscheidung | Stand |
 |---|---|---|---|
-| 1 | Aktienuniversum | Statische Liste ~30 liquide US-Large-Caps für MVP, kein Live-Scanner in v1 | festgelegt |
+| 1 | Aktienuniversum | Statische Liste ~30 liquide US-Large-Caps für MVP, kein Live-Scanner in v1 | festgelegt (Form) / **vorläufig** (konkrete Liste) |
 | 2 | Haltedauer | 30 Min – wenige Stunden, Exit spätestens Handelsende (Intraday) | festgelegt |
 | 3 | Long/Short | Long only für MVP | festgelegt |
 | 4 | Datenanbieter | Alpaca (Start), Polygon.io ergänzend | **vorläufig** — Empfehlung, noch nicht einzeln bestätigt |

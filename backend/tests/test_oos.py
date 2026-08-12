@@ -45,6 +45,18 @@ class TestOosSplit(unittest.TestCase):
         # accessible without unlock() - only out_of_sample is guarded
         self.assertEqual(len(split.in_sample), 5)
 
+    def test_uses_ny_local_date_not_naive_utc_date(self):
+        # 2026-01-06 02:00 UTC is 2026-01-05 21:00 EST in New York (winter,
+        # UTC-5) - under a naive UTC .date() this bar would wrongly land in
+        # out_of_sample instead of in_sample for a Jan-6 cutoff.
+        bars = [
+            Bar(symbol="TEST", timestamp=datetime(2026, 1, 5, 15, 0, tzinfo=timezone.utc), open=1, high=1, low=1, close=1, volume=1000),
+            Bar(symbol="TEST", timestamp=datetime(2026, 1, 6, 2, 0, tzinfo=timezone.utc), open=1, high=1, low=1, close=1, volume=1000),
+            Bar(symbol="TEST", timestamp=datetime(2026, 1, 6, 15, 0, tzinfo=timezone.utc), open=1, high=1, low=1, close=1, volume=1000),
+        ]
+        split = OosSplit(bars, cutoff=date(2026, 1, 6))
+        self.assertEqual(len(split.in_sample), 2)  # both the Jan-5 15:00 UTC and Jan-6 02:00 UTC bars
+
 
 if __name__ == "__main__":
     unittest.main()

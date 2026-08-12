@@ -6,22 +6,32 @@ calling code only uses the public API" — nothing stops a strategy from
 capturing a bar list via closure or reaching into `cursor._bars` directly.
 This module checks empirically, treating the strategy as a black box: run
 it once on the full series and once on a truncated prefix, and compare
-the fills produced strictly before the truncation boundary (with a small
-buffer — see `boundary_buffer` below). A strategy whose decisions only
-ever depend on `cursor.history` must produce byte-for-byte identical
-fills in that shared region, because at every position before the
-boundary both runs are looking at literally the same bars. Any
-difference — extra fills, missing fills, or a fill with a different
-price/side — means the strategy's decision at some point depended on data
-that would not have existed if the series had actually ended at
-`cut_index`.
+the fills produced up to a boundary (see `boundary_buffer` below). A
+strategy whose decisions only ever depend on `cursor.history` must
+produce byte-for-byte identical fills in that shared region, because at
+every position before the boundary both runs are looking at literally the
+same bars. Any difference — extra fills, missing fills, or a fill with a
+different price/side — means the strategy's decision at some point
+depended on data that would not have existed if the series had actually
+ended at `cut_index`.
 
-The `boundary_buffer` exists because of a legitimate, non-leaky edge
-effect: reference_engine fills a signal at the *next* bar's open, so a
-signal generated on the last bar or two of the prefix may simply have no
-next bar to fill at there, while the full run (which keeps going) does
-fill it. That is truncation, not leakage, and is excluded from the
-comparison rather than mistaken for a bug.
+`boundary_buffer` exists because of exactly one legitimate, non-leaky
+edge effect: reference_engine fills a signal at the *next* bar's open, so
+a signal decided on the very last bar the prefix run processes
+(bars[cut_index - 1]) has no next bar to fill at there, while the full
+run (which keeps going) does fill it — at bars[cut_index]'s open. That
+one fill is expected to differ and is excluded, nothing more. The default
+`boundary_buffer=0` draws the line at exactly that: fills up to and
+including bars[cut_index - 1]'s own timestamp are compared (a decision
+made as late as bars[cut_index - 2] still fills within the prefix, at
+bars[cut_index - 1]'s open, and both runs must agree on it); only the
+fill that would land at bars[cut_index] itself is excluded. A larger
+buffer was tried during development and quietly cost real coverage: with
+`boundary_buffer=1`, a strategy that only leaked when deciding at
+bars[cut_index - 2] came back "clean" — the fill it produced (at
+bars[cut_index - 1]'s open) was being excluded from the comparison for no
+reason connected to actual truncation. See test_leakage.py for that exact
+case reproduced as a regression test.
 """
 
 from __future__ import annotations
@@ -61,7 +71,7 @@ def detect_leakage(
     strategy_factory: StrategyFactory,
     cut_index: int,
     fee_per_share: float = 0.0,
-    boundary_buffer: int = 1,
+    boundary_buffer: int = 0,
 ) -> LeakageReport:
     if not (0 < cut_index < len(bars)):
         raise ValueError("cut_index must be strictly between 0 and len(bars)")

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from app.data.calendar import NY_TZ
 from app.data.point_in_time import Bar
 
 
@@ -23,8 +24,12 @@ class OosLockedError(RuntimeError):
 
 class OosSplit:
     def __init__(self, bars: list[Bar], cutoff: date):
-        self._in_sample = [b for b in bars if b.timestamp.date() < cutoff]
-        self._out_of_sample = [b for b in bars if b.timestamp.date() >= cutoff]
+        # NY-local date, consistent with app/features/indicators.py's
+        # current_session_bars and app/validation/walk_forward.py - see
+        # walk_forward.py's module docstring for why this matters even
+        # though it's a no-op for regular-session bars specifically.
+        self._in_sample = [b for b in bars if b.timestamp.astimezone(NY_TZ).date() < cutoff]
+        self._out_of_sample = [b for b in bars if b.timestamp.astimezone(NY_TZ).date() >= cutoff]
         self._unlocked = False
 
     @property
