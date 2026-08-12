@@ -42,6 +42,9 @@ jobs:
   # correctness) are stdlib-only by design so that gate stays meaningful
   # without depending on an unverified install.
 
-  # Phase 5 fügt hier ein separates Gate hinzu, das die synthetischen
-  # Backtest-Korrektheitstests und die Look-Ahead-/Leakage-Detection
-  # aus ROADMAP.md Abschnitt 15 als Pflicht-Check vor jedem Merge laufen lässt.
+  # Phase 5 update: the leakage-detection tests (app/validation/leakage.py,
+  # tests/test_leakage.py, tests/test_gate.py) landed as regular stdlib-only
+  # tests, so `pytest -q` above already runs them as a required check on
+  # every push/PR - no separate job was needed after all. See
+  # PHASE5_NOTES.md for what the resulting 12-point gate does and does not
+  # yet automate.

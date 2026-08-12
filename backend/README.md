@@ -21,6 +21,6 @@ Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub,
 - ⏳ Produktive Backtest-Engine-Integration (Nautilus Trader oder Alternative) — offen, siehe `../PHASE2_NOTES.md`
 - ✅ `app/features/indicators.py` — kausale Indikatoren: SMA, EMA, ATR, Session-VWAP, Opening Range (Phase 4)
 - ✅ `app/strategies/` — VWAP Momentum, EMA Pullback, Opening Range Breakout, gegen synthetische Daten end-to-end getestet (Phase 4)
-- ⏳ `app/validation/` — OOS/Walk-Forward/Monte-Carlo-Gates (Phase 5)
+- ✅ `app/validation/` — Metrics, OOS-Sperre, Walk-Forward, Monte Carlo, Leakage-Detection, 12-Punkte-Gate (7/12 Punkte automatisiert, Rest ehrlich als `NOT_AUTOMATED` markiert, siehe `../PHASE5_NOTES.md`) (Phase 5)
 - ⏳ `app/signals/` — Signal Engine & Scoring (Phase 6)
 - ⏳ `app/api/` — FastAPI-Routen (Phase 8)
