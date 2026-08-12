@@ -1,12 +1,19 @@
 # Backend
 
-Python/FastAPI-Backend. Struktur wird in Phase 2 (Backtest-Engine-Fundament) angelegt — siehe `../ROADMAP.md` Abschnitt 9 und `../DECISIONS.md`.
+Python/FastAPI-Backend — siehe `../ROADMAP.md` Abschnitt 9 und `../DECISIONS.md`.
 
-Geplante Struktur (wird phasenweise befüllt, nicht vorab angelegt):
+Tests ausführen (reine Standardbibliothek, kein `pip install` nötig):
 
-- `data/` — Point-in-Time-Datenzugriff (Phase 2/3)
-- `backtest/` — Backtest-Engine-Integration (Phase 2)
-- `strategies/` — Strategy-Definitionen (Phase 4)
-- `validation/` — OOS/Walk-Forward/Monte-Carlo-Gates (Phase 5)
-- `signals/` — Signal Engine & Scoring (Phase 6)
-- `api/` — FastAPI-Routen (Phase 8)
+```
+cd backend && python3 -m unittest discover -s tests -v
+```
+
+Struktur (✅ = angelegt und getestet, ⏳ = geplant, wird in der genannten Phase befüllt):
+
+- ✅ `app/data/point_in_time.py` — Point-in-Time-Datenzugriff / Look-Ahead-Schutz (Phase 2)
+- ✅ `app/backtest/reference_engine.py` — Korrektheits-Referenz-Engine, nicht die produktive Engine (Phase 2)
+- ⏳ Produktive Backtest-Engine-Integration (Nautilus Trader oder Alternative) — offen, siehe `../PHASE2_NOTES.md`
+- ⏳ `app/strategies/` — Strategy-Definitionen (Phase 4)
+- ⏳ `app/validation/` — OOS/Walk-Forward/Monte-Carlo-Gates (Phase 5)
+- ⏳ `app/signals/` — Signal Engine & Scoring (Phase 6)
+- ⏳ `app/api/` — FastAPI-Routen (Phase 8)

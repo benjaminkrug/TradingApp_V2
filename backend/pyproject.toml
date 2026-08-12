@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tradingapp-backend"
+version = "0.1.0"
+description = "AI Short-Term Trading Intelligence Platform — backend"
+requires-python = ">=3.11"
+# Runtime dependencies for later phases. NOT yet verified installable in
+# every environment — this sandbox has no PyPI egress (see PHASE2_NOTES.md).
+# Confirm with `pip install -e .[dev]` in an environment with network access
+# before relying on this list.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pandas>=2.2",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "redis>=5.0",
+    # Backtest framework candidate (ROADMAP.md Abschnitt 9) — intentionally
+    # not pinned or added here yet. Add once installability + equities/
+    # point-in-time behavior are verified per PHASE2_NOTES.md, so that CI
+    # does not go red on an unverified dependency in the meantime.
+    # "nautilus_trader",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
