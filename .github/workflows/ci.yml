@@ -20,12 +20,27 @@ jobs:
         run: |
           if [ -d tests ]; then pytest -q; else echo "no tests yet"; fi
 
+  # Probe job only: checks whether nautilus_trader is actually installable
+  # here, since the dev sandbox has no PyPI egress and could not verify this
+  # (see PHASE2_NOTES.md). continue-on-error so a "no" doesn't block PRs —
+  # this is a research spike, not a gate yet.
+  probe-nautilus-trader:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Attempt install and print version
+        run: |
+          pip install nautilus_trader
+          python -c "import nautilus_trader; print('nautilus_trader', nautilus_trader.__version__)"
+
   # Full dependency install (pip install -e .[dev], incl. the eventual
-  # backtest framework) is intentionally not part of this job yet — see
+  # backtest framework) is intentionally not part of the main job yet — see
   # PHASE2_NOTES.md. Today's tests (point-in-time guard, reference backtest
-  # correctness) are stdlib-only by design so this gate stays meaningful
-  # without depending on an unverified install. Add a full-dependency job
-  # once the framework choice in ROADMAP.md Abschnitt 9 is confirmed.
+  # correctness) are stdlib-only by design so that gate stays meaningful
+  # without depending on an unverified install.
 
   # Phase 5 fügt hier ein separates Gate hinzu, das die synthetischen
   # Backtest-Korrektheitstests und die Look-Ahead-/Leakage-Detection
