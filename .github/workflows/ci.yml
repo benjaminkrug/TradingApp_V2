@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e .; fi
+          pip install pytest
+      - name: Run tests
+        working-directory: backend
+        run: |
+          if [ -d tests ]; then pytest -q; else echo "no tests yet"; fi
+
+  # Phase 5 fügt hier ein separates Gate hinzu, das die synthetischen
+  # Backtest-Korrektheitstests und die Look-Ahead-/Leakage-Detection
+  # aus ROADMAP.md Abschnitt 15 als Pflicht-Check vor jedem Merge laufen lässt.
