@@ -22,5 +22,5 @@ Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub,
 - ✅ `app/features/indicators.py` — kausale Indikatoren: SMA, EMA, ATR, Session-VWAP, Opening Range (Phase 4)
 - ✅ `app/strategies/` — VWAP Momentum, EMA Pullback, Opening Range Breakout, gegen synthetische Daten end-to-end getestet (Phase 4)
 - ✅ `app/validation/` — Metrics, OOS-Sperre, Walk-Forward, Monte Carlo, Leakage-Detection, 12-Punkte-Gate (7/12 Punkte automatisiert, Rest ehrlich als `NOT_AUTOMATED` markiert, siehe `../PHASE5_NOTES.md`) (Phase 5)
-- ⏳ `app/signals/` — Signal Engine & Scoring (Phase 6)
+- ✅ `app/signals/` — Scanner (statische Liste), Risk/Exit-Berechnung, Kill-Switch, Score-Kalibrierung (uncalibrated ohne echte Daten statt erfundener Werte), Signal-Zusammenstellung mit Begründung, siehe `../PHASE6_NOTES.md` (Phase 6)
 - ⏳ `app/api/` — FastAPI-Routen (Phase 8)

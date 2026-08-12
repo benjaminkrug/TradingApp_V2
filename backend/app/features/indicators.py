@@ -100,3 +100,19 @@ def opening_range(bars: list[Bar], num_bars: int) -> Optional[tuple[float, float
         return None
     opening = session_bars[:num_bars]
     return min(b.low for b in opening), max(b.high for b in opening)
+
+
+def relative_volume(bars: list[Bar], lookback: int) -> Optional[float]:
+    """The last bar's volume divided by the average volume of the
+    `lookback` bars immediately before it (excluding the last bar itself -
+    otherwise every bar would trivially be "relative volume ~1x its own
+    contribution to its own average"). `None` if there isn't enough prior
+    history, or if the prior average volume is zero."""
+    if len(bars) < lookback + 1:
+        return None
+    current = bars[-1]
+    prior = bars[-(lookback + 1) : -1]
+    avg_volume = sum(b.volume for b in prior) / lookback
+    if avg_volume == 0:
+        return None
+    return current.volume / avg_volume
