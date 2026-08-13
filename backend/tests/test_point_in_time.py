@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from app.data.point_in_time import Bar, CursorNotStartedError, PointInTimeSeries
+from app.data.point_in_time import Bar, CursorNotStartedError, PointInTimeSeries, StreamingCursor
 
 
 def make_bars(closes: list[float], symbol: str = "TEST") -> list[Bar]:
@@ -119,6 +119,48 @@ class TestSimulationCursor(unittest.TestCase):
         cursor = PointInTimeSeries(bars).new_cursor()
         seen = [bar.close for bar in cursor]
         self.assertEqual(seen, [100, 101, 102])
+
+
+class TestStreamingCursor(unittest.TestCase):
+    def test_current_before_append_raises(self):
+        cursor = StreamingCursor()
+        with self.assertRaises(CursorNotStartedError):
+            _ = cursor.current
+
+    def test_history_grows_as_bars_are_appended(self):
+        bars = make_bars([100, 101, 102])
+        cursor = StreamingCursor()
+
+        cursor.append(bars[0])
+        self.assertEqual([b.close for b in cursor.history], [100])
+        self.assertEqual(cursor.current.close, 100)
+
+        cursor.append(bars[1])
+        cursor.append(bars[2])
+        self.assertEqual([b.close for b in cursor.history], [100, 101, 102])
+        self.assertEqual(cursor.current.close, 102)
+
+    def test_history_returns_a_copy_not_the_internal_list(self):
+        bars = make_bars([100, 101])
+        cursor = StreamingCursor()
+        cursor.append(bars[0])
+        history = cursor.history
+        history.append(bars[1])
+        self.assertEqual(len(cursor.history), 1)  # mutation of the returned list must not leak back in
+
+    def test_rejects_non_increasing_timestamps(self):
+        bars = make_bars([100, 101])
+        cursor = StreamingCursor()
+        cursor.append(bars[1])
+        with self.assertRaises(ValueError):
+            cursor.append(bars[0])  # earlier timestamp than what was already appended
+
+    def test_rejects_duplicate_timestamp(self):
+        bars = make_bars([100, 101])
+        cursor = StreamingCursor()
+        cursor.append(bars[0])
+        with self.assertRaises(ValueError):
+            cursor.append(bars[0])
 
 
 if __name__ == "__main__":

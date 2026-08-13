@@ -133,3 +133,46 @@ class SimulationCursor:
     @property
     def has_next(self) -> bool:
         return self._index + 1 < len(self._bars)
+
+
+class StreamingCursor:
+    """Append-only cursor for live/paper trading (app/paper/engine.py),
+    where bars arrive one at a time as they happen rather than being
+    pre-loaded into a fixed list like `SimulationCursor`.
+
+    Exposes the same `.history`/`.current` read surface as
+    `SimulationCursor` — strategies and `build_signal()` only ever touch
+    `cursor.history` (see app/strategies/*.py, app/signals/signal.py), so
+    both cursor types are interchangeable to that code. That is what makes
+    "same logic in paper trading as in a backtest" (ROADMAP.md Abschnitt
+    12/14) hold structurally rather than needing to be maintained by hand
+    across two implementations.
+
+    Its look-ahead guarantee is actually stronger than `SimulationCursor`'s:
+    there is no way to accidentally read a future bar here, because future
+    bars do not exist yet at the time each one is appended — not merely
+    "the API doesn't expose them" (SimulationCursor's caveat, since it does
+    hold the full list internally), but "they haven't happened yet".
+    """
+
+    def __init__(self) -> None:
+        self._bars: list[Bar] = []
+
+    def append(self, bar: Bar) -> None:
+        if self._bars and bar.timestamp <= self._bars[-1].timestamp:
+            raise ValueError(
+                f"StreamingCursor.append: bar timestamp {bar.timestamp} is not after the last "
+                f"appended bar's timestamp {self._bars[-1].timestamp} - bars must arrive in "
+                "strictly increasing chronological order."
+            )
+        self._bars.append(bar)
+
+    @property
+    def current(self) -> Bar:
+        if not self._bars:
+            raise CursorNotStartedError("cursor has no bars appended yet")
+        return self._bars[-1]
+
+    @property
+    def history(self) -> list[Bar]:
+        return list(self._bars)

@@ -26,3 +26,5 @@ Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub,
 - ✅ `scripts/phase7_synthetic_gate_run.py` — führt beide Phase-7-Strategien durch die volle Pipeline auf synthetischen Daten; beide fallen ehrlich durch (siehe `../PHASE7_NOTES.md`) (Phase 7)
 - ✅ `app/api/` — FastAPI-Routen für Dashboard/Signals/Trade-Detail/Journal, gegen synthetische Demo-Daten (kein `pip install` in dieser Sandbox möglich, per CI verifiziert, siehe `../PHASE8_NOTES.md`) (Phase 8)
 - ✅ `../frontend/` — Vue 3 + TypeScript + Vite Web-App (kein `npm install` in dieser Sandbox möglich, per CI verifiziert, siehe `../PHASE8_NOTES.md`) (Phase 8)
+- ✅ `app/paper/` — Paper-Trading-Engine: Portfolio/Order-State, Stop/Target-Durchsetzung, Handelsende-Flatten, Kauf­kraft-Prüfung; nutzt dieselben Strategien/`build_signal()`/Fills wie Backtest und Phase-8-API (Phase 9)
+- ✅ `scripts/phase9_paper_trading_demo.py` — Paper-Trading-Lauf gegen synthetische Demo-Daten über mehrere Symbole (siehe `../PHASE9_NOTES.md`) (Phase 9)

@@ -3,7 +3,14 @@ on synthetic (NOT real market) data, and prints the resulting gate
 reports. This is what PHASE7_NOTES.md's numbers come from - run it
 yourself to reproduce them exactly (fixed seed):
 
-    cd backend && python3 scripts/phase7_synthetic_gate_run.py
+    cd backend && PYTHONPATH=. python3 scripts/phase7_synthetic_gate_run.py
+
+(PYTHONPATH=. is required: `python3 scripts/x.py` puts scripts/ on
+sys.path, not backend/, so the `app` package otherwise fails to import
+with `ModuleNotFoundError: No module named 'app'` - this command was
+wrong until it was actually run and checked during Phase 9 development;
+`python3 -m unittest discover` doesn't have the same problem because
+`-m` puts the current working directory on sys.path instead.)
 
 ROADMAP.md Abschnitt 8: a strategy is never accepted on a single
 backtest. This script does not decide whether either strategy is "good" -
