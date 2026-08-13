@@ -63,6 +63,19 @@ def evaluate_candidate(
     monte_carlo_samples: int = 1000,
     monte_carlo_seed: Optional[int] = None,
 ) -> GateReport:
+    """Runs strategy_factory()'s strategy through all 12 checks against
+    `bars` (treated as the in-sample set - pass in-sample bars here, not
+    the full series, if you also have OOS data).
+
+    `leakage_cut_index` is passed straight through to `detect_leakage` and
+    must be an index INTO `bars` (0 < leakage_cut_index < len(bars)), not
+    into some other, larger series it may have been derived from. Found
+    during Phase 7's review: computing it from a differently-sized series
+    (e.g. `len(all_bars) // 2` while passing `bars=in_sample_bars`) can
+    stay in-bounds by coincidence and run without error while landing at
+    an unintended, non-central cut point - see
+    scripts/phase7_synthetic_gate_run.py's history for the concrete case.
+    """
     results: list[GateCheckResult] = []
 
     in_sample_result = run_reference_backtest(bars, strategy_factory(), fee_per_share=fee_per_share)

@@ -15,10 +15,27 @@ strategies are tested against here; would need incremental/stateful
 indicator updates before running this against a real multi-thousand-bar
 backtest — left as a known limitation rather than optimized prematurely.
 
-Only the indicators actually used by the three strategies in
-app/strategies/ are implemented here (EMA, session VWAP, ATR, opening
-range) — not a general TA library. More get added when a strategy
-actually needs them (see PHASE4_NOTES.md).
+Only the indicators actually used by the strategies in app/strategies/
+are implemented here (EMA, session VWAP, ATR, opening range, relative
+volume, distance-in-ATR) — not a general TA library. More get added when
+a strategy actually needs them (see PHASE4_NOTES.md/PHASE7_NOTES.md).
+
+Session-scoping note: `session_vwap` and `opening_range` deliberately
+reset every session (via `current_session_bars`) because VWAP and an
+opening range are inherently session-cumulative concepts by definition -
+"today's volume-weighted average price" has no meaning carried over from
+yesterday. `ema_series`, `atr`, `relative_volume`, and `distance_in_atr`
+deliberately do NOT reset at session boundaries: they are rolling-window
+concepts with no inherent daily reset convention, and carrying them
+across days is standard practice (a 20-period EMA spanning multiple
+sessions is the normal way to compute one). One practical consequence
+worth knowing: at the very first bar of a new session, `MeanReversionStrategy`'s
+"did price just turn up" check compares that bar's close against the
+previous session's last close - an overnight gap can look like a same-day
+"turn" even though no intraday reversal happened. Not fixed here because
+"close every position by end of day" (ROADMAP.md's actual intraday
+constraint) isn't enforced by any layer yet - that belongs to a future
+Risk/Exit Engine, not to this indicator module.
 """
 
 from __future__ import annotations

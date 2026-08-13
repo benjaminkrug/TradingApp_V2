@@ -87,6 +87,9 @@ def run_for_strategy(name: str, strategy_factory) -> None:
     split_index = int(len(all_bars) * 0.7)
     cutoff = all_bars[split_index].timestamp.date()
 
+    # Standalone check on the full series (its own, independently valid
+    # midpoint - not reused below, see the note on evaluate_candidate's
+    # leakage_cut_index).
     leakage_report = detect_leakage(all_bars, strategy_factory, cut_index=len(all_bars) // 2, fee_per_share=0.01)
     print(f"\n{name}: leakage clean={leakage_report.clean} ({len(leakage_report.mismatches)} mismatches)")
 
@@ -97,11 +100,16 @@ def run_for_strategy(name: str, strategy_factory) -> None:
 
     wf_windows = walk_forward_windows(in_sample_bars, train_days=40, test_days=10, step_days=10)
 
+    # Found during the Phase 7 critical re-review: evaluate_candidate's
+    # leakage_cut_index must be relative to `bars` (in_sample_bars here),
+    # not to all_bars - reusing len(all_bars) // 2 happened to still be
+    # in-bounds (in_sample_bars is longer than half of all_bars) but
+    # landed at ~71% through in_sample_bars by accident, not by choice.
     report = evaluate_candidate(
         bars=in_sample_bars,
         strategy_factory=strategy_factory,
         fee_per_share=0.01,
-        leakage_cut_index=len(all_bars) // 2,
+        leakage_cut_index=len(in_sample_bars) // 2,
         min_trades=10,
         oos_bars=oos_bars,
         walk_forward_test_windows=wf_windows,
