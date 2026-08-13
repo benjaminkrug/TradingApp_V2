@@ -30,3 +30,6 @@ Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub,
 - ✅ `scripts/phase9_paper_trading_demo.py` — Paper-Trading-Lauf gegen synthetische Demo-Daten über mehrere Symbole (siehe `../PHASE9_NOTES.md`) (Phase 9)
 - ✅ `app/forward_test/` — Forward-Test-Tracking (`ingest()` pro echtem Datenabruf, Bereitschaftsprüfung gegen ROADMAP's 20-Trades/90-Tage-Kriterium, OOS-Vergleichsbericht); liefert Infrastruktur, kein abgeschlossenes Testergebnis, siehe `../PHASE10_NOTES.md` (Phase 10)
 - ✅ `scripts/phase10_forward_test_demo.py` — tageweise gefütterter Forward-Test-Lauf gegen synthetische Daten (siehe `../PHASE10_NOTES.md`) (Phase 10)
+- ✅ `app/signals/news_filter.py` — Pre-Trade-Gate (Earnings-Blackout, Volatilitätsexpansion [echt berechnet], News-Relevanz [ehrlich `NOT_AUTOMATED`]); optional in `PaperTradingEngine`/`ForwardTestSession` verdrahtet (Phase 11)
+- ✅ `app/live_readiness/` — Go/No-Go-Checkliste vor echtem Kapitaleinsatz (PDT-sicheres Konto, Kill-Switch, News-Filter, Forward-Test-Bereitschaft; Broker-Anbindung und menschliche Freigabe bleiben ehrlich `NOT_AUTOMATED`) — **keine Order-Ausführung**, siehe `../PHASE11_NOTES.md` (Phase 11)
+- ✅ `scripts/phase11_live_readiness_demo.py` — Forward-Test + Readiness-Report end-to-end auf synthetischen Daten (siehe `../PHASE11_NOTES.md`) (Phase 11)

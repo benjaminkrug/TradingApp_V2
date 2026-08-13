@@ -44,6 +44,7 @@ from app.data.calendar import NY_TZ
 from app.data.point_in_time import Bar, StreamingCursor
 from app.data.providers.base import MarketDataProvider
 from app.paper.portfolio import InsufficientCashError, PendingOrder, Portfolio
+from app.signals.news_filter import EarningsCalendarProvider, PreTradeGateReport, run_pretrade_gate
 from app.signals.risk import DailyLossGuard
 from app.signals.signal import build_signal
 
@@ -75,6 +76,11 @@ class PaperTradingEngine:
         atr_period: int = 14,
         atr_multiple: float = 1.5,
         risk_reward: float = 2.0,
+        earnings_provider: Optional[EarningsCalendarProvider] = None,
+        earnings_blackout_days: int = 2,
+        volatility_short_period: int = 5,
+        volatility_baseline_period: int = 20,
+        volatility_expansion_multiple: float = 2.5,
     ):
         self.symbol = symbol
         self.strategy = strategy
@@ -90,6 +96,16 @@ class PaperTradingEngine:
         self.atr_period = atr_period
         self.atr_multiple = atr_multiple
         self.risk_reward = risk_reward
+        # ROADMAP.md Abschnitt 14's pre-trade filter (app/signals/news_filter.py).
+        # `earnings_provider=None` (the default) skips it entirely, preserving
+        # every Phase 9/10 engine's exact prior behavior - this is additive,
+        # opt-in safety, not a retroactive behavior change.
+        self.earnings_provider = earnings_provider
+        self.earnings_blackout_days = earnings_blackout_days
+        self.volatility_short_period = volatility_short_period
+        self.volatility_baseline_period = volatility_baseline_period
+        self.volatility_expansion_multiple = volatility_expansion_multiple
+        self.last_pretrade_gate_report: Optional[PreTradeGateReport] = None
         self.cursor = StreamingCursor()
         self._pending_order: Optional[PendingOrder] = None
         self._current_session_date: Optional[date] = None
@@ -191,6 +207,20 @@ class PaperTradingEngine:
         if action != "BUY" or not self.daily_loss_guard.can_trade():
             return
 
+        if self.earnings_provider is not None:
+            self.last_pretrade_gate_report = run_pretrade_gate(
+                symbol=self.symbol,
+                as_of=_session_date(self.cursor.current),
+                history=self.cursor.history,
+                earnings_provider=self.earnings_provider,
+                earnings_blackout_days=self.earnings_blackout_days,
+                volatility_short_period=self.volatility_short_period,
+                volatility_baseline_period=self.volatility_baseline_period,
+                volatility_expansion_multiple=self.volatility_expansion_multiple,
+            )
+            if self.last_pretrade_gate_report.blocked:
+                return  # ROADMAP.md Abschnitt 14: no new entry while the pre-trade gate blocks it
+
         signal = build_signal(
             self.cursor,
             "BUY",
@@ -234,6 +264,11 @@ def run_paper_trading(
     atr_period: int = 14,
     atr_multiple: float = 1.5,
     risk_reward: float = 2.0,
+    earnings_provider: Optional[EarningsCalendarProvider] = None,
+    earnings_blackout_days: int = 2,
+    volatility_short_period: int = 5,
+    volatility_baseline_period: int = 20,
+    volatility_expansion_multiple: float = 2.5,
 ) -> PaperTradingResult:
     """Multi-symbol paper-trading driver: pulls each symbol's bars from
     `provider` (any `MarketDataProvider` - `FakeProvider` for tests/demos
@@ -259,6 +294,11 @@ def run_paper_trading(
             atr_period=atr_period,
             atr_multiple=atr_multiple,
             risk_reward=risk_reward,
+            earnings_provider=earnings_provider,
+            earnings_blackout_days=earnings_blackout_days,
+            volatility_short_period=volatility_short_period,
+            volatility_baseline_period=volatility_baseline_period,
+            volatility_expansion_multiple=volatility_expansion_multiple,
         )
         for symbol in symbols
     }

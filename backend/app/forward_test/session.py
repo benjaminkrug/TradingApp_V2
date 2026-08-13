@@ -27,8 +27,9 @@ from datetime import datetime
 from typing import Optional
 
 from app.data.point_in_time import Bar
-from app.paper.engine import PaperTradingEngine, Strategy, StrategyFactory
+from app.paper.engine import PaperTradingEngine, StrategyFactory
 from app.paper.portfolio import Portfolio
+from app.signals.news_filter import EarningsCalendarProvider
 from app.signals.risk import DailyLossGuard
 from app.validation.metrics import Metrics, compute_metrics, trades_from_fills
 
@@ -73,6 +74,11 @@ class ForwardTestSession:
         atr_period: int = 14,
         atr_multiple: float = 1.5,
         risk_reward: float = 2.0,
+        earnings_provider: Optional[EarningsCalendarProvider] = None,
+        earnings_blackout_days: int = 2,
+        volatility_short_period: int = 5,
+        volatility_baseline_period: int = 20,
+        volatility_expansion_multiple: float = 2.5,
     ):
         self.criteria = criteria
         self.portfolio = Portfolio(starting_equity)
@@ -89,6 +95,11 @@ class ForwardTestSession:
                 atr_period=atr_period,
                 atr_multiple=atr_multiple,
                 risk_reward=risk_reward,
+                earnings_provider=earnings_provider,
+                earnings_blackout_days=earnings_blackout_days,
+                volatility_short_period=volatility_short_period,
+                volatility_baseline_period=volatility_baseline_period,
+                volatility_expansion_multiple=volatility_expansion_multiple,
             )
             for symbol in symbols
         }

@@ -6,6 +6,7 @@ from app.data.point_in_time import Bar
 from app.data.providers.fake import FakeProvider
 from app.paper.engine import PaperTradingEngine, run_paper_trading
 from app.paper.portfolio import Portfolio
+from app.signals.news_filter import FakeEarningsCalendarProvider
 from app.signals.risk import DailyLossGuard
 
 SYMBOL = "TEST"
@@ -29,7 +30,7 @@ class ScriptedStrategy:
         return self._actions.pop(0)
 
 
-def new_engine(strategy, portfolio=None, daily_loss_guard=None, risk_pct=0.0025, fee_per_share=0.0):
+def new_engine(strategy, portfolio=None, daily_loss_guard=None, risk_pct=0.0025, fee_per_share=0.0, earnings_provider=None):
     return PaperTradingEngine(
         symbol=SYMBOL,
         strategy=strategy,
@@ -41,6 +42,7 @@ def new_engine(strategy, portfolio=None, daily_loss_guard=None, risk_pct=0.0025,
         atr_period=2,
         atr_multiple=1.0,
         risk_reward=2.0,
+        earnings_provider=earnings_provider,
     )
 
 
@@ -273,6 +275,58 @@ class TestRunPaperTrading(unittest.TestCase):
         self.assertIn("AAPL", result.portfolio.positions)
         self.assertNotIn("MSFT", result.portfolio.positions)
         self.assertEqual({f.symbol for f in result.portfolio.fills}, {"AAPL"})
+
+
+class TestPaperTradingEnginePretradeGate(unittest.TestCase):
+    """Bars 0-2 are the same flat 100/101/102 scenario used throughout this
+    file: BUY decided on bar2 (entry_ref=102, stop=101, target=104,
+    shares=125), would normally fill at bar3's open (103)."""
+
+    def setUp(self):
+        self.base = session_bounds(date(2026, 1, 6))[0]
+        self.t = [self.base + timedelta(minutes=5 * i) for i in range(4)]
+        self.flat_bars = [bar(self.t[0], 100, 100, 100, 100), bar(self.t[1], 101, 101, 101, 101), bar(self.t[2], 102, 102, 102, 102)]
+
+    def test_earnings_blackout_blocks_the_entry(self):
+        session_date = self.t[2].date()  # NY-local date coincides with UTC here (January, EST)
+        provider = FakeEarningsCalendarProvider({SYMBOL: [session_date]})  # earnings the same day as the decision
+        strategy = ScriptedStrategy(["HOLD", "HOLD", "BUY", "HOLD"])
+        portfolio = Portfolio(starting_cash=50_000.0)
+        engine = new_engine(strategy, portfolio=portfolio, earnings_provider=provider)
+
+        for b in self.flat_bars:
+            engine.on_bar(b)
+        engine.on_bar(bar(self.t[3], 103, 103, 103, 103))  # would fill here if not blocked
+
+        self.assertNotIn(SYMBOL, portfolio.positions)
+        self.assertEqual(portfolio.fills, [])
+        self.assertIsNotNone(engine.last_pretrade_gate_report)
+        self.assertTrue(engine.last_pretrade_gate_report.blocked)
+
+    def test_no_upcoming_earnings_allows_the_entry(self):
+        provider = FakeEarningsCalendarProvider({})  # nothing scheduled - gate should not block
+        strategy = ScriptedStrategy(["HOLD", "HOLD", "BUY", "HOLD"])
+        portfolio = Portfolio(starting_cash=50_000.0)
+        engine = new_engine(strategy, portfolio=portfolio, earnings_provider=provider)
+
+        for b in self.flat_bars:
+            engine.on_bar(b)
+        engine.on_bar(bar(self.t[3], 103, 103, 103, 103))
+
+        self.assertIn(SYMBOL, portfolio.positions)
+        self.assertFalse(engine.last_pretrade_gate_report.blocked)
+
+    def test_without_earnings_provider_gate_is_never_run(self):
+        strategy = ScriptedStrategy(["HOLD", "HOLD", "BUY", "HOLD"])
+        portfolio = Portfolio(starting_cash=50_000.0)
+        engine = new_engine(strategy, portfolio=portfolio)  # earnings_provider=None (default)
+
+        for b in self.flat_bars:
+            engine.on_bar(b)
+        engine.on_bar(bar(self.t[3], 103, 103, 103, 103))
+
+        self.assertIn(SYMBOL, portfolio.positions)  # unaffected - same as every pre-Phase-11 test in this file
+        self.assertIsNone(engine.last_pretrade_gate_report)
 
 
 if __name__ == "__main__":
