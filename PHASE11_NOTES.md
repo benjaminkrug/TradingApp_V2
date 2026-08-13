@@ -43,3 +43,5 @@ Optional in `PaperTradingEngine`/`run_paper_trading`/`ForwardTestSession` verdra
 6. **`max_position_pct_of_capital` (25 %) ist ein weiterer unbestätigter Default**, nicht Teil von DECISIONS.md #1–#7, da er erst in dieser Phase als Sicherheitsmechanismus eingeführt wurde.
 
 224 Tests laufen grün (24 neue: 13 `news_filter`, 3 `PaperTradingEngine`-Pretrade-Gate-Integration, 8 `live_readiness`), 7 weiterhin übersprungen (FastAPI, siehe PHASE8_NOTES.md).
+
+**CI-Ergebnis (Run 31682340614, Commit 7f3be88):** alle 4 Jobs grün.
