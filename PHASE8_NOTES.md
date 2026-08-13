@@ -37,7 +37,7 @@ Referenz: `ROADMAP.md` Abschnitt 19 (Dashboard, Charts, Signals, Trade Detail Vi
    - `frontend-build`: `npm install && npm run type-check && npm run build` — die einzige Möglichkeit, den Vue/TS-Code überhaupt auf Syntax- und Typfehler zu prüfen, da lokal kein `npm` an die Registry kam.
 3. Beide Jobs sind reguläre (nicht `continue-on-error`) Jobs, weil hier — anders als bei `nautilus_trader` in Phase 2 — nicht offen ist, *ob* die Dependency installierbar ist, sondern nur, *ob der eigene Code korrekt ist*. Ein Fehlschlag hier ist ein echter, zu behebender Fehler, kein informativer Forschungs-Datenpunkt.
 
-Push erfolgt gleich; CI-Ergebnis wird geprüft und hier nachgetragen, falls etwas nicht durchläuft.
+**CI-Ergebnis (Run 31673199292, Commit 99bf62e):** alle 4 Jobs grün, insbesondere `backend-api-tests` (7 API-Tests liefen echt, nicht übersprungen) und `frontend-build` (`npm install && npm run type-check && npm run build` erfolgreich) — beide neuen Jobs waren zuvor noch nie gelaufen und hätten jeden Syntax-/Typ-/Importfehler in `app/api/` oder `frontend/src/` aufgedeckt. Das ist die erste tatsächliche Bestätigung, dass sowohl der FastAPI- als auch der Vue/TS-Code korrekt ist — vorher nur durch manuelle Logikprüfung (Schritt 1 oben) und lokale Kompilierbarkeits-/Syntaxchecks abgedeckt.
 
 ## Was noch offen ist
 
