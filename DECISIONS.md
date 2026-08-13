@@ -4,6 +4,8 @@ Festgehalten aus `ROADMAP.md`, Abschnitt 3, als Grundlage für die Implementieru
 
 **Hinweis zum Stand "vorläufig":** #4 und #5 waren ursprünglich Empfehlungen aus der ersten Analyse, nie einzeln vom Nutzer bestätigt — nur der Gesamtplan wurde freigegeben. Bei einer kritischen Nachprüfung am 12.08.2026 wurde das als zu weitgehend markiert: eine Datenanbieter-Wahl (reale Kontoanbindung) und ein Risikoparameter (reales Geld im späteren Live-Betrieb) sind Entscheidungen, die explizit vom Nutzer bestätigt werden sollten, nicht durch stillschweigende Übernahme einer Empfehlung. Code und weitere Phasen bauen bis auf Weiteres trotzdem auf diesen Werten auf — "vorläufig" heißt: gilt als Arbeitsstand, aber offen für Korrektur ohne dass das als Bruch mit einer früheren Zusage zu werten wäre.
 
+**Update 13.08.2026:** #4 und #5 wurden vor Beginn von Phase 9 (Paper Trading) explizit einzeln mit dem Nutzer bestätigt, da Phase 9 zum ersten Mal tatsächlich auf diesen Werten operiert (vorher nur synthetische Demo-Daten in Phase 8). Beide gelten jetzt als **festgelegt**, nicht mehr vorläufig.
+
 Bei der kritischen Nachprüfung von Phase 5/6 (12.08.2026) fiel derselbe Fehler noch einmal auf, diesmal bei #1: Die *Form* der Entscheidung ("~30 liquide Large-Caps, kein Live-Scanner") war bestätigt, aber die konkrete Ticker-Liste in `backend/app/signals/scanner.py` habe ich selbst zusammengestellt, ohne sie dem Nutzer vorzulegen. Dort im Code als "nicht geprüfte Beispielliste" dokumentiert, hier zur Konsistenz ebenfalls als vorläufig nachgetragen.
 
 | # | Frage | Entscheidung | Stand |
@@ -11,9 +13,10 @@ Bei der kritischen Nachprüfung von Phase 5/6 (12.08.2026) fiel derselbe Fehler 
 | 1 | Aktienuniversum | Statische Liste ~30 liquide US-Large-Caps für MVP, kein Live-Scanner in v1 | festgelegt (Form) / **vorläufig** (konkrete Liste) |
 | 2 | Haltedauer | 30 Min – wenige Stunden, Exit spätestens Handelsende (Intraday) | festgelegt |
 | 3 | Long/Short | Long only für MVP | festgelegt |
-| 4 | Datenanbieter | Alpaca (Start), Polygon.io ergänzend | **vorläufig** — Empfehlung, noch nicht einzeln bestätigt |
-| 5 | Risiko pro Trade | 0,25–0,5 % des simulierten Kontos | **vorläufig** — Empfehlung, noch nicht einzeln bestätigt |
-| 6 | PDT-Regel / Kontogröße | **offen** — muss vor Phase 11 (Controlled Live Test) mit dem Nutzer geklärt werden | **offen** |
+| 4 | Datenanbieter | Alpaca (Start), Polygon.io optional später ergänzend | festgelegt (13.08.2026) |
+| 5 | Risiko pro Trade | 0,25 % des (simulierten) Kontos, fester Wert im Code | festgelegt (13.08.2026) |
+| 6 | PDT-Regel / Kontogröße (reales Live-Konto) | **offen** — muss vor Phase 11 (Controlled Live Test) mit dem Nutzer geklärt werden | **offen** |
+| 7 | Paper-Trading-Startkapital (simuliert, ≠ #6) | 50.000 USD | festgelegt (13.08.2026) |
 
 ## Weitere technische Festlegungen (ROADMAP.md Abschnitt 17)
 
