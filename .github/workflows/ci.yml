@@ -48,3 +48,50 @@ jobs:
   # every push/PR - no separate job was needed after all. See
   # PHASE5_NOTES.md for what the resulting 12-point gate does and does not
   # yet automate.
+
+  # Phase 8: the FastAPI layer (app/api/) is the first code that actually
+  # imports fastapi/pydantic/httpx, none of which are installable in the
+  # dev sandbox (PyPI is network-blocked there, see PHASE2_NOTES.md's
+  # nautilus_trader precedent). This is the "full dependency install" job
+  # the comment above described as deferred - it's needed now. tests/test_api.py
+  # is written to skip itself (not fail) when fastapi/httpx aren't
+  # importable, so backend-tests above stays green without them; this job
+  # installs the real dependencies and runs the full suite so the API tests
+  # actually execute, not just skip.
+  backend-api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend with dev extras (fastapi, httpx, pytest, ...)
+        working-directory: backend
+        run: pip install -e ".[dev]"
+      - name: Run full test suite
+        working-directory: backend
+        run: pytest -q
+
+  # Phase 8 frontend: Vue 3 + TypeScript + Vite (DECISIONS.md). The npm
+  # registry is also network-blocked in the dev sandbox (same
+  # host_not_allowed policy as PyPI/Alpaca/Polygon - confirmed via
+  # `curl -sSI https://registry.npmjs.org/vue`), so none of this could be
+  # `npm install`ed or type-checked locally. Verified here instead, the
+  # same "write it for real, verify via CI" pattern as backend-api-tests
+  # above and the earlier nautilus_trader probe.
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+      - name: Type-check
+        working-directory: frontend
+        run: npm run type-check
+      - name: Build
+        working-directory: frontend
+        run: npm run build

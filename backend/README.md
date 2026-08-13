@@ -24,4 +24,5 @@ Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub,
 - ✅ `app/validation/` — Metrics, OOS-Sperre, Walk-Forward, Monte Carlo, Leakage-Detection, 12-Punkte-Gate (7/12 Punkte automatisiert, Rest ehrlich als `NOT_AUTOMATED` markiert, siehe `../PHASE5_NOTES.md`) (Phase 5)
 - ✅ `app/signals/` — Scanner (statische Liste), Risk/Exit-Berechnung, Kill-Switch, Score-Kalibrierung (uncalibrated ohne echte Daten statt erfundener Werte), Signal-Zusammenstellung mit Begründung, siehe `../PHASE6_NOTES.md` (Phase 6)
 - ✅ `scripts/phase7_synthetic_gate_run.py` — führt beide Phase-7-Strategien durch die volle Pipeline auf synthetischen Daten; beide fallen ehrlich durch (siehe `../PHASE7_NOTES.md`) (Phase 7)
-- ⏳ `app/api/` — FastAPI-Routen (Phase 8)
+- ✅ `app/api/` — FastAPI-Routen für Dashboard/Signals/Trade-Detail/Journal, gegen synthetische Demo-Daten (kein `pip install` in dieser Sandbox möglich, per CI verifiziert, siehe `../PHASE8_NOTES.md`) (Phase 8)
+- ✅ `../frontend/` — Vue 3 + TypeScript + Vite Web-App (kein `npm install` in dieser Sandbox möglich, per CI verifiziert, siehe `../PHASE8_NOTES.md`) (Phase 8)
