@@ -28,3 +28,5 @@ Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub,
 - ✅ `../frontend/` — Vue 3 + TypeScript + Vite Web-App (kein `npm install` in dieser Sandbox möglich, per CI verifiziert, siehe `../PHASE8_NOTES.md`) (Phase 8)
 - ✅ `app/paper/` — Paper-Trading-Engine: Portfolio/Order-State, Stop/Target-Durchsetzung, Handelsende-Flatten, Kauf­kraft-Prüfung; nutzt dieselben Strategien/`build_signal()`/Fills wie Backtest und Phase-8-API (Phase 9)
 - ✅ `scripts/phase9_paper_trading_demo.py` — Paper-Trading-Lauf gegen synthetische Demo-Daten über mehrere Symbole (siehe `../PHASE9_NOTES.md`) (Phase 9)
+- ✅ `app/forward_test/` — Forward-Test-Tracking (`ingest()` pro echtem Datenabruf, Bereitschaftsprüfung gegen ROADMAP's 20-Trades/90-Tage-Kriterium, OOS-Vergleichsbericht); liefert Infrastruktur, kein abgeschlossenes Testergebnis, siehe `../PHASE10_NOTES.md` (Phase 10)
+- ✅ `scripts/phase10_forward_test_demo.py` — tageweise gefütterter Forward-Test-Lauf gegen synthetische Daten (siehe `../PHASE10_NOTES.md`) (Phase 10)
