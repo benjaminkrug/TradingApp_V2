@@ -32,3 +32,5 @@ ROADMAP Abschnitt 14 trägt den Titel "News & Earnings Filter, Paper Trading, Fo
 4. **Kein Persistenzlayer für `ForwardTestSession`.** Der Zustand lebt nur im Prozessspeicher — für einen über Wochen laufenden Test bräuchte es eine Möglichkeit, `Portfolio`/`DailyLossGuard`/Cursor-Zustand über Prozess-Neustarts hinweg zu speichern und zu laden. Nicht Teil dieser Phase (dieselbe Art von Lücke wie Phase 8s noch nicht angebundenes Trade Journal, siehe PHASE8_NOTES.md/PHASE9_NOTES.md).
 
 200 Tests laufen grün (9 neue: `tests/test_forward_test.py`), 7 weiterhin übersprungen (FastAPI, siehe PHASE8_NOTES.md).
+
+**CI-Ergebnis (Run 31680108346, Commit b7397fb):** alle 4 Jobs grün.
