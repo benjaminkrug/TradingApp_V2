@@ -19,8 +19,9 @@ Struktur (✅ = angelegt und getestet, 🟡 = angelegt, aber unverifiziert/Stub,
 - ✅ `app/data/providers/fake.py` — In-Memory-Provider für Tests (Phase 3)
 - 🟡 `app/data/providers/alpaca.py`, `polygon.py` — dokumentierte Stubs, `NotImplementedError`; keine Netzwerk-/Key-Verifikation in dieser Sandbox möglich, siehe `../PHASE3_NOTES.md`
 - ⏳ Produktive Backtest-Engine-Integration (Nautilus Trader oder Alternative) — offen, siehe `../PHASE2_NOTES.md`
-- ✅ `app/features/indicators.py` — kausale Indikatoren: SMA, EMA, ATR, Session-VWAP, Opening Range (Phase 4)
-- ✅ `app/strategies/` — VWAP Momentum, EMA Pullback, Opening Range Breakout, gegen synthetische Daten end-to-end getestet (Phase 4)
+- ✅ `app/features/indicators.py` — kausale Indikatoren: SMA, EMA, ATR, Session-VWAP, Opening Range, Relative Volume, Distance-in-ATR (Phase 4/6/7)
+- ✅ `app/strategies/` — VWAP Momentum, EMA Pullback, Opening Range Breakout (Phase 4); Mean Reversion, Relative Volume Momentum (Phase 7) — alle end-to-end gegen synthetische Daten getestet
 - ✅ `app/validation/` — Metrics, OOS-Sperre, Walk-Forward, Monte Carlo, Leakage-Detection, 12-Punkte-Gate (7/12 Punkte automatisiert, Rest ehrlich als `NOT_AUTOMATED` markiert, siehe `../PHASE5_NOTES.md`) (Phase 5)
 - ✅ `app/signals/` — Scanner (statische Liste), Risk/Exit-Berechnung, Kill-Switch, Score-Kalibrierung (uncalibrated ohne echte Daten statt erfundener Werte), Signal-Zusammenstellung mit Begründung, siehe `../PHASE6_NOTES.md` (Phase 6)
+- ✅ `scripts/phase7_synthetic_gate_run.py` — führt beide Phase-7-Strategien durch die volle Pipeline auf synthetischen Daten; beide fallen ehrlich durch (siehe `../PHASE7_NOTES.md`) (Phase 7)
 - ⏳ `app/api/` — FastAPI-Routen (Phase 8)

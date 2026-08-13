@@ -5,6 +5,7 @@ from app.data.point_in_time import Bar
 from app.features.indicators import (
     atr,
     current_session_bars,
+    distance_in_atr,
     ema_series,
     opening_range,
     session_vwap,
@@ -96,6 +97,23 @@ class TestOpeningRange(unittest.TestCase):
     def test_none_when_session_has_fewer_bars_than_requested(self):
         bars = [bar(0, 9, 10, 8, 9, 100), bar(1, 9.5, 11, 9, 10, 100)]
         self.assertIsNone(opening_range(bars, 3))
+
+
+class TestDistanceInAtr(unittest.TestCase):
+    def test_matches_hand_calculation(self):
+        closes = [100] * 5 + [90]
+        bars = [bar(i, c, c + 0.5, c - 0.5, c, 1000) for i, c in enumerate(closes)]
+        # ema(5) = 96.6667, atr(3) = 4.1667 -> (90 - 96.6667) / 4.1667 = -1.6
+        self.assertAlmostEqual(distance_in_atr(bars, ema_period=5, atr_period=3), -1.6, places=4)
+
+    def test_positive_above_ema(self):
+        closes = [100] * 5 + [110]
+        bars = [bar(i, c, c + 0.5, c - 0.5, c, 1000) for i, c in enumerate(closes)]
+        self.assertGreater(distance_in_atr(bars, ema_period=5, atr_period=3), 0)
+
+    def test_none_when_insufficient_history(self):
+        bars = [bar(0, 100, 100.5, 99.5, 100, 1000)]
+        self.assertIsNone(distance_in_atr(bars, ema_period=5, atr_period=3))
 
 
 if __name__ == "__main__":

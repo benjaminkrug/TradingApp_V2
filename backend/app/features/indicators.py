@@ -116,3 +116,20 @@ def relative_volume(bars: list[Bar], lookback: int) -> Optional[float]:
     if avg_volume == 0:
         return None
     return current.volume / avg_volume
+
+
+def distance_in_atr(bars: list[Bar], ema_period: int, atr_period: int) -> Optional[float]:
+    """(last close - EMA) expressed in units of ATR: a simple normalized
+    measure of how far price has stretched from its short-term mean,
+    scaled by recent volatility. Positive means price is above the EMA,
+    negative below. Used by mean-reversion strategies (Phase 7) - trend
+    strategies compare price to the EMA directly, but "how many ATRs
+    away" is what tells a reversion strategy whether a move is unusually
+    stretched rather than just normal noise. `None` if either underlying
+    indicator isn't computable yet, or ATR is zero."""
+    closes = [b.close for b in bars]
+    ema = ema_series(closes, ema_period)
+    atr_value = atr(bars, atr_period)
+    if not ema or ema[-1] is None or atr_value is None or atr_value == 0:
+        return None
+    return (bars[-1].close - ema[-1]) / atr_value
