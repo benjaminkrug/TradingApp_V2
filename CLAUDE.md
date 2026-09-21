@@ -126,7 +126,7 @@ ROADMAP.md              Volle fachliche Spezifikation (Pflichtlektüre bei Unsic
 DECISIONS.md            Siehe Abschnitt 5
 DISCLAIMER.md           Research-/Paper-Trading-Disclaimer, im Frontend sichtbar
 PHASE2_NOTES.md … PHASE11_NOTES.md   Ein Dokument pro Phase, volles Detail
-REAL_DATA_VALIDATION_NOTES.md   Erster Gate-Lauf der Phase-4-Strategien gegen echte Alpaca-Daten (21.09.2026) — EMA Pullback & Opening Range Breakout bestehen alle automatisierbaren Checks, VWAP Momentum fällt durch
+REAL_DATA_VALIDATION_NOTES.md   Gate-Läufe der Phase-4-Strategien gegen echte Alpaca-Daten, 3 Symbole (21.09.2026) — keine Strategie besteht konsistent, Opening Range Breakout am stärksten (2/3)
 transkript/              4 YouTube-Transkripte (DaviddTech-Methodik), Basis für ROADMAP v2
 ```
 
@@ -194,7 +194,7 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 - ~~`package-lock.json` fehlt~~ **Behoben 21.09.2026** — erster lokaler `npm install` hat ihn erzeugt, committet, CI nutzt jetzt `npm ci` statt `npm install`.
 - **Web-App (Dashboard/Signals/Trades-API) nutzt weiterhin synthetische Demo-Daten**, nicht die jetzt echte `AlpacaProvider`-Anbindung — `/api/dashboard` meldet das ehrlich selbst (`"data_source":"synthetic_demo"`). Umstellung auf echte Daten ist noch offen (Teil von Phase C, siehe Abschnitt 10).
 - **Kein Pull Request erstellt**, Branch liegt direkt auf GitHub ohne Merge nach `main`.
-- **Nur EMA Pullback und Opening Range Breakout haben das Gate auf echten Daten bestanden** (VWAP Momentum fiel durch, s. `REAL_DATA_VALIDATION_NOTES.md`) — bisher nur 1 Symbol (AAPL), 1 Zeitraum (~6,5 Monate). Kein Beleg für andere Symbole/Zeiträume.
+- **Keine der 3 Phase-4-Strategien besteht das Gate konsistent auf echten Daten** (AAPL/MSFT/NVDA getestet, s. `REAL_DATA_VALIDATION_NOTES.md`): VWAP Momentum 0/3, EMA Pullback 1/3, Opening Range Breakout 2/3. Opening Range Breakout ist der einzige noch nicht widerlegte Kandidat, aber NICHT validiert — 2/3 auf überlappenden Zeiträumen ist eine schwache Basis.
 - **Monte-Carlo-Drawdown-Schwelle ist eine offene Geschäftsentscheidung** (wie DECISIONS.md #5/#6) — bisher bewusst nicht gesetzt, Punkt bleibt `NOT_AUTOMATED`.
 
 ---
@@ -217,12 +217,12 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 
 Grund: Keine Strategie hatte je das 12-Punkte-Gate auf echten Daten durchlaufen, nur auf synthetischen Zufallsdaten (Phase 5/6/7). Ein Forward-Test bestätigt laut Roadmap ein bereits bestandenes OOS-Ergebnis — es gab noch keins auf echten Daten zu bestätigen. Details, Tabelle, Einschränkungen: `REAL_DATA_VALIDATION_NOTES.md`.
 
-8. ✅ **Erster Gate-Lauf mit echten Alpaca-Daten** (`backend/scripts/real_data_gate_run.py`, AAPL, 05.03.–21.09.2026, 11.459 Bars): VWAP Momentum FAIL (Walk-Forward instabil), **EMA Pullback und Opening Range Breakout PASS** (alle automatisierbaren Gate-Punkte). Monte-Carlo-Schwelle bewusst offen gelassen (Geschäftsentscheidung, s. u.).
-9. **Offen:** Weitere Symbole/Zeiträume gegen EMA Pullback und Opening Range Breakout testen (`PYTHONPATH=. python scripts/real_data_gate_run.py SYMBOL`), bevor eine der beiden als Forward-Test-Kandidat gilt — ein Symbol/ein Zeitraum ist eine erste Stichprobe, kein Beweis.
+8. ✅ **Gate-Läufe mit echten Alpaca-Daten, 3 Symbole** (`backend/scripts/real_data_gate_run.py`, AAPL/MSFT/NVDA, 05.03.–21.09.2026): **keine Strategie besteht konsistent** — VWAP Momentum 0/3, EMA Pullback 1/3 (nur AAPL, war Stichproben-Zufall), Opening Range Breakout 2/3 (AAPL, NVDA — fällt auf MSFT durch). Monte-Carlo-Schwelle bewusst offen gelassen (Geschäftsentscheidung, s. u.).
+9. **Offen:** Weitere Symbole UND andere (nicht überlappende) Zeiträume gegen Opening Range Breakout testen (`PYTHONPATH=. python scripts/real_data_gate_run.py SYMBOL`) — 2/3 auf einem einzigen ~6,5-Monats-Fenster ist zu wenig, um sie als Forward-Test-Kandidat zu bezeichnen. VWAP Momentum und EMA Pullback nicht weiter priorisieren, solange sie mehrheitlich durchfallen.
 10. **Geschäftsentscheidung offen:** Monte-Carlo-Drawdown-Schwelle (wie viel maximaler Drawdown ist akzeptabel?) — bisher nicht mit dem Nutzer geklärt, kein DECISIONS.md-Eintrag.
 
 ### Phase C — Echter Forward-Test (Wochen bis Monate)
-11. Eine validierte Strategie (EMA Pullback oder Opening Range Breakout, nach Schritt 9) für den Forward-Test auswählen.
+11. Falls Opening Range Breakout nach weiteren Tests (Schritt 9) mehrheitlich besteht: für den Forward-Test auswählen. Falls nicht — zurück zu Schritt 9 mit mehr Symbolen/Zeiträumen, oder ehrlich akzeptieren, dass noch keine der 3 Phase-4-Strategien forward-test-reif ist.
 12. Täglichen Job (Cron o. ä.) einrichten: `AlpacaProvider.get_bars()` für den letzten Handelstag holen → `ForwardTestSession.ingest()` füttern.
 13. Regelmäßig `session.status()` prüfen, bis `ready_for_review=True` (ROADMAP-Kriterium: ≥20 Trades **oder** ~3 Monate).
 14. `compare_to_oos()` (in `app/forward_test/session.py`) gegen die dokumentierten OOS-Ergebnisse der jeweiligen Strategie laufen lassen.
