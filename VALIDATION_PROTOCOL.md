@@ -44,6 +44,20 @@ Bewusste Asymmetrie: Dieses Kriterium kann auch echte Strategien aussortieren �
 
 **Auf den heutigen Datenbestand ist K6 nicht anwendbar:** Das bisherige Testfenster (05.03.–21.09.2026) enthält genau eine Marktphase, alle drei getesteten Aktien stiegen um 22–28 %. K6 erzwingt damit automatisch die Beschaffung längerer Historie.
 
+### K2a — Stop-Horizont: Raster mit vorab festgelegter Entscheidungsregel
+
+Der Stop-Abstand ergibt sich aus dem ATR. Auf welchem Zeithorizont dieser ATR gemessen wird, ist **keine** frei optimierbare Stellschraube, sondern wird nach folgender, hier vorab fixierter Regel behandelt:
+
+**Getestet wird ein deklariertes Raster von drei Horizonten:** ATR über 5-Minuten-Bars, über Stundenbars, über Tagesbars.
+
+**Entscheidungsregel — ausdrücklich nicht "der beste gewinnt":** Ein Ergebnis zählt nur, wenn es über **mindestens zwei benachbarte** Rasterpunkte hält. Ein Kandidat, der nur bei genau einer Einstellung besteht und bei den Nachbarwerten zusammenbricht, gilt als **fragil und damit als nicht bestanden** — unabhängig davon, wie gut der Einzelwert aussieht.
+
+Begründung für das Raster statt einer prinzipiellen Festlegung: Naheliegend wäre, den Stop-Horizont einfach an die erlaubte Haltedauer zu koppeln (seit 21.09.2026 mehrtägig, also Tages-ATR). Dieses Argument trägt aber nicht vollständig — die Strategien erzeugen weiterhin *Intraday*-Signale, und dass längeres Halten erlaubt ist, macht die zugrunde liegende These nicht mehrtägig. Über welchen Zeitraum sich die gehandelte Bewegung entfaltet, ist eine empirische Frage, die sich nicht aus einem Prinzip ableiten lässt.
+
+**Die drei Rasterpunkte zählen als drei Konfigurationen in der Mehrfachtest-Protokollierung** (siehe unten und K7).
+
+**Nicht Teil des Rasters:** Die Obergrenze für die Positionsgröße (20 % des Kontos) wird per Prinzip festgelegt und nicht mitgetestet. Sie ist eine Risikogrenze, kein Performance-Parameter. Anlass: Bei einem Stop aus dem 5-Minuten-ATR ergab die 0,25-%-Risikoregel Positionen von 83–136 % des Kontos, wodurch 41–77 % aller Orders mangels Kaufkraft verworfen wurden — was die Stichprobe verzerrt, weil dann nur noch gehandelt wird, wenn zufällig Kapital frei ist.
+
 ### K7 — Permutationstest gegen Zufall und Mehrfachtestung
 p < 0,05 gegen folgende Nullhypothese: **Einstiegszeitpunkte werden innerhalb derselben Handelstage zufällig neu gezogen**, bei gleicher Anzahl Trades und gleicher Verteilung der Haltedauern. Mindestens 10.000 Permutationen.
 
@@ -96,3 +110,4 @@ Deshalb: **Jede getestete Konfiguration wird hier oder im Ergebnisspeicher proto
 | Datum | Änderung | Vor/nach Kenntnis von Ergebnissen? |
 |---|---|---|
 | 21.09.2026 | Erstfassung, vor Implementierung und Ausführung | vorher |
+| 21.09.2026 | K2a ergänzt (Stop-Horizont-Raster mit Zwei-Nachbarn-Regel, Positionsdeckel 20 %) | **Gemischt, ehrlich getrennt:** Die K2-Vergleichszahlen (Referenz-Engine vs. echte Regeln) waren zu diesem Zeitpunkt bereits bekannt und haben den Anlass geliefert — die Positionsgrößen von 83–136 % des Kontos fielen dabei auf. **Kein einziges Ergebnis eines Stop-Horizont-Rasterpunkts war bekannt**, als die Zwei-Nachbarn-Regel festgelegt wurde; genau darauf kommt es für die Gültigkeit dieser Regel an. |
