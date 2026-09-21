@@ -72,13 +72,15 @@ jobs:
         working-directory: backend
         run: pytest -q
 
-  # Phase 8 frontend: Vue 3 + TypeScript + Vite (DECISIONS.md). The npm
-  # registry is also network-blocked in the dev sandbox (same
-  # host_not_allowed policy as PyPI/Alpaca/Polygon - confirmed via
-  # `curl -sSI https://registry.npmjs.org/vue`), so none of this could be
-  # `npm install`ed or type-checked locally. Verified here instead, the
-  # same "write it for real, verify via CI" pattern as backend-api-tests
-  # above and the earlier nautilus_trader probe.
+  # Phase 8 frontend: Vue 3 + TypeScript + Vite (DECISIONS.md). Originally
+  # written without ever running `npm install` locally - the dev sandbox
+  # blocked the npm registry the same way it blocked PyPI/Alpaca/Polygon
+  # (confirmed via `curl -sSI https://registry.npmjs.org/vue`), so this was
+  # verified only via CI. Confirmed working locally on 21.09.2026 (real PC,
+  # real network) - `npm install`, `npm run type-check` and the dev server
+  # all run clean, and that first local `npm install` produced
+  # package-lock.json (didn't exist before), so CI now uses `npm ci` for a
+  # reproducible install instead of `npm install`.
   frontend-build:
     runs-on: ubuntu-latest
     steps:
@@ -88,7 +90,7 @@ jobs:
           node-version: "20"
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm install
+        run: npm ci
       - name: Type-check
         working-directory: frontend
         run: npm run type-check

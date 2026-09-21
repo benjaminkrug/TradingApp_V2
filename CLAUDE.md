@@ -1,6 +1,6 @@
 # CLAUDE.md — Projektgedächtnis / Handoff
 
-**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 21.09.2026, nach Implementierung von `AlpacaProvider` (Phase B, Schritt 4).
+**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 21.09.2026, nach Abschluss von Phase B (Alpaca-Anbindung implementiert + verifiziert, Backend/Frontend lokal lauffähig).
 
 **Für den Nutzer:** Wenn du eine neue Claude-Code-Session öffnest (z. B. an deinem PC), lädt sie diese Datei automatisch. Du kannst direkt "mach weiter" o. ä. sagen — Claude hat dann den vollen Kontext.
 
@@ -188,7 +188,8 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 - **PostgreSQL/TimescaleDB/Redis/Celery/Docker** — alle in DECISIONS.md als Tech-Stack festgelegt, aber nichts davon wurde bisher aufgesetzt oder vom Code genutzt. Alles läuft bisher In-Memory/synthetisch.
 - **Kein Persistenzlayer** — `Portfolio`/`ForwardTestSession`-Zustand lebt nur im Prozessspeicher, nichts überlebt einen Neustart.
 - **Trade Journal (Phase 8 API)** liefert bewusst eine leere Liste — nie an echte Paper-Trading-Ergebnisse angebunden.
-- **`package-lock.json` fehlt** — `npm install` lief nie lokal, um ihn zu erzeugen. CI nutzt deshalb `npm install` statt `npm ci`.
+- ~~`package-lock.json` fehlt~~ **Behoben 21.09.2026** — erster lokaler `npm install` hat ihn erzeugt, committet, CI nutzt jetzt `npm ci` statt `npm install`.
+- **Web-App (Dashboard/Signals/Trades-API) nutzt weiterhin synthetische Demo-Daten**, nicht die jetzt echte `AlpacaProvider`-Anbindung — `/api/dashboard` meldet das ehrlich selbst (`"data_source":"synthetic_demo"`). Umstellung auf echte Daten ist noch offen (Teil von Phase C, siehe Abschnitt 10).
 - **Kein Pull Request erstellt**, Branch liegt direkt auf GitHub ohne Merge nach `main`.
 
 ---
@@ -203,8 +204,9 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 3. ✅ `pip install -e ".[dev]"` — am PC bereits vorhanden, 229/229 Tests laufen grün.
 4. ✅ **`AlpacaProvider.get_bars()` implementiert und end-to-end verifiziert** (21.09.2026) — echte Anbindung an `data.alpaca.markets`, hermetisch getestet UND vom Nutzer selbst mit echten Paper-Keys erfolgreich gegen echte AAPL-Kursdaten gelaufen (`backend/scripts/verify_alpaca_connection.py`, Ergebnis: 6 Tagesbars).
 5. ✅ `.env` mit echten Paper-Keys befüllt (`.env` ist in `.gitignore`, wird nie committet).
-6. Backend starten (`uvicorn app.api.main:app --reload`), Frontend starten (`npm install && npm run dev`) — noch offen.
-7. **Alternativ/zusätzlich:** Falls Alpaca-Keys als GitHub-Actions-Secrets hinterlegt werden, einen Verbindungs-Probe-Job in `.github/workflows/ci.yml` bauen — exakt das Muster, mit dem `nautilus_trader` in Phase 2 verifiziert wurde (`probe-nautilus-trader`-Job als Vorlage). Noch nicht gemacht.
+6. ✅ **Backend + Frontend lokal gestartet und verifiziert** (21.09.2026): `uvicorn app.api.main:app` auf Port 8000 (`/docs`, `/api/health`, `/api/dashboard` antworten), `npm run dev` auf Port 5173 (Type-Check fehlerfrei, im Browser vom Nutzer bestätigt: lädt fehlerfrei). CORS zwischen den beiden funktioniert (Backend erlaubt exakt `http://localhost:5173` — beim Start auf `127.0.0.1` statt `localhost` binden würde CORS brechen, das ist beim ersten Versuch passiert und wurde korrigiert). Nebenbei erster `npm install` überhaupt → `package-lock.json` erzeugt, committet, CI auf `npm ci` umgestellt.
+7. **Alternativ/zusätzlich:** Falls Alpaca-Keys als GitHub-Actions-Secrets hinterlegt werden, einen Verbindungs-Probe-Job in `.github/workflows/ci.yml` bauen — exakt das Muster, mit dem `nautilus_trader` in Phase 2 verifiziert wurde (`probe-nautilus-trader`-Job als Vorlage). Noch nicht gemacht, nicht dringend, da Alpaca-Anbindung bereits lokal verifiziert ist.
+**Damit ist Phase B fachlich abgeschlossen.** Offen bleibt nur noch: Web-App von synthetischen Demo-Daten auf die echte `AlpacaProvider`-Anbindung umstellen — das ist Schritt 8 unten, der Übergang zu Phase C.
 
 ### Phase C — Echter Forward-Test (Wochen bis Monate)
 8. Täglichen Job (Cron o. ä.) einrichten: `AlpacaProvider.get_bars()` für den letzten Handelstag holen → `ForwardTestSession.ingest()` füttern.
