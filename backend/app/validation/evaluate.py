@@ -127,6 +127,8 @@ def evaluate(
     atr_period: int = 14,
     atr_multiple: float = 1.5,
     risk_reward: float = 2.0,
+    atr_horizon: str = "bar",
+    max_position_pct: Optional[float] = None,
 ) -> Evaluation:
     symbols = sorted({b.symbol for b in bars})
 
@@ -142,6 +144,8 @@ def evaluate(
         atr_period=atr_period,
         atr_multiple=atr_multiple,
         risk_reward=risk_reward,
+        atr_horizon=atr_horizon,
+        max_position_pct=max_position_pct,
         flatten_at_session_end=flatten_at_session_end,
     )
     paper_trades = _trades_by_symbol(result.portfolio.fills)

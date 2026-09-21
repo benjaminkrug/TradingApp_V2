@@ -117,6 +117,83 @@ def current_session_bars(bars: list[Bar]) -> list[Bar]:
     return bars[first_index:]
 
 
+def _bucket_key(bar: Bar, horizon: str):
+    local = bar.timestamp.astimezone(NY_TZ)
+    if horizon == "day":
+        return local.date()
+    if horizon == "hour":
+        return (local.date(), local.hour)
+    raise ValueError(f"unknown horizon {horizon!r} - expected 'bar', 'hour' or 'day'")
+
+
+def _aggregate(newest_first: list[Bar]) -> Bar:
+    oldest = newest_first[-1]
+    newest = newest_first[0]
+    return Bar(
+        symbol=newest.symbol,
+        timestamp=newest.timestamp,
+        open=oldest.open,
+        high=max(b.high for b in newest_first),
+        low=min(b.low for b in newest_first),
+        close=newest.close,
+        volume=sum(b.volume for b in newest_first),
+    )
+
+
+def resample_tail(bars: list[Bar], horizon: str, count: int) -> list[Bar]:
+    """The most recent `count` bars aggregated to `horizon` ('bar' = no
+    aggregation, 'hour', 'day'), oldest first.
+
+    Exists so a stop can be sized off a longer volatility horizon than the
+    bars the strategy runs on — VALIDATION_PROTOCOL.md K2a. An ATR over 14
+    five-minute bars measures 70 minutes of volatility, which produced
+    stops so tight that the 0.25% risk rule implied positions of 83-136%
+    of the account.
+
+    Only the tail is built: the scan walks backwards and stops as soon as
+    `count` buckets are complete, so cost is bounded by `count` rather than
+    by total history length. That matters because this runs once per bar.
+
+    The newest, still-forming bucket is dropped for aggregated horizons
+    (you cannot know mid-session what today's range will be, and an
+    understated range would mean a tighter stop and therefore a *larger*
+    position - the error would point in the dangerous direction). For
+    horizon='bar' nothing is dropped, since the latest bar is closed.
+    """
+    if count <= 0:
+        return []
+    if horizon == "bar":
+        return bars[-count:]
+    if not bars:
+        return []
+
+    buckets: list[Bar] = []
+    group: list[Bar] = []
+    current_key = None
+    for bar in reversed(bars):
+        key = _bucket_key(bar, horizon)
+        if current_key is not None and key != current_key:
+            buckets.append(_aggregate(group))
+            group = []
+            if len(buckets) > count:  # > not >=: the newest bucket gets dropped below
+                break
+        current_key = key
+        group.append(bar)
+    if group and len(buckets) <= count:
+        buckets.append(_aggregate(group))
+
+    return list(reversed(buckets[1:]))  # drop the newest, still-forming bucket
+
+
+def atr_on_horizon(bars: list[Bar], period: int, horizon: str = "bar") -> Optional[float]:
+    """ATR measured over `horizon`-sized bars instead of raw input bars."""
+    if horizon == "bar":
+        return atr(bars, period)
+    # period + 1 aggregated bars are needed for `period` true ranges, and
+    # resample_tail already discards the incomplete newest bucket.
+    return atr(resample_tail(bars, horizon, period + 2), period)
+
+
 def session_vwap(bars: list[Bar]) -> Optional[float]:
     """Volume-weighted average price over the current session's bars so
     far (resets every session, per standard practice)."""

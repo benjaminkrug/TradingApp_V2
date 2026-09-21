@@ -10,6 +10,7 @@ number as a default.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 def atr_stop_loss(entry: float, atr_value: float, atr_multiple: float = 1.5) -> float:
@@ -32,10 +33,27 @@ def risk_reward_target(entry: float, stop: float, risk_reward: float = 2.0) -> f
     return entry + risk_reward * risk_per_share
 
 
-def position_size(account_equity: float, risk_pct: float, entry: float, stop: float) -> float:
+def position_size(
+    account_equity: float,
+    risk_pct: float,
+    entry: float,
+    stop: float,
+    max_position_pct: Optional[float] = None,
+) -> float:
     """Shares such that a fill exactly at `stop` loses `risk_pct` of
     `account_equity` — the worked example in ROADMAP.md Abschnitt 13
-    (50000 account, 0.5% risk, entry 100, stop 98 -> 125 shares)."""
+    (50000 account, 0.5% risk, entry 100, stop 98 -> 125 shares).
+
+    `max_position_pct` optionally caps the resulting position at a share of
+    account equity. Risk-based sizing alone says nothing about how much
+    capital a position ties up: with a tight stop it implies an enormous
+    one, and it only limits the loss *if the stop holds* - which it does
+    not against an overnight gap, now that DECISIONS.md #2 permits
+    multi-day holds. Measured on real data, a stop from a 5-minute ATR
+    produced positions of 83-136% of the account. Defaults to None (no
+    cap) so the ROADMAP worked example above keeps its documented result;
+    callers that trade rather than illustrate should set it.
+    """
     if not 0 < risk_pct < 1:
         raise ValueError("risk_pct must be a fraction between 0 and 1 (e.g. 0.005 for 0.5%)")
     if account_equity <= 0:
@@ -44,7 +62,15 @@ def position_size(account_equity: float, risk_pct: float, entry: float, stop: fl
     if risk_per_share <= 0:
         raise ValueError("stop must be below entry for a long position")
     max_loss = account_equity * risk_pct
-    return max_loss / risk_per_share
+    shares = max_loss / risk_per_share
+
+    if max_position_pct is not None:
+        if not 0 < max_position_pct <= 1:
+            raise ValueError("max_position_pct must be a fraction in (0, 1], e.g. 0.20 for 20%")
+        if entry <= 0:
+            raise ValueError("entry must be positive")
+        shares = min(shares, account_equity * max_position_pct / entry)
+    return shares
 
 
 @dataclass

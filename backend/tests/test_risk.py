@@ -39,6 +39,31 @@ class TestPositionSize(unittest.TestCase):
         with self.assertRaises(ValueError):
             position_size(50000, 0.005, 100, 100)
 
+    def test_cap_limits_a_tight_stop_to_a_share_of_equity(self):
+        """The case measured on real data: a 5-minute-ATR stop of ~0.50 on a
+        300 stock implies 250 shares = 75,000 notional on a 50,000 account
+        (150%). The 20% cap must bring that down to 50000*0.20/300 = 33.33
+        shares."""
+        uncapped = position_size(50_000, 0.0025, 300, 299.5)
+        self.assertAlmostEqual(uncapped, 250.0)
+
+        capped = position_size(50_000, 0.0025, 300, 299.5, max_position_pct=0.20)
+        self.assertAlmostEqual(capped, 10_000 / 300)
+
+    def test_cap_does_not_bind_when_the_stop_is_wide(self):
+        """A daily-ATR stop already keeps the position small, so the cap must
+        leave risk-based sizing untouched rather than quietly shrinking it."""
+        # 50,000 * 0.25% = 125 risk; stop 11.62 away -> 10.76 shares -> 3,227
+        # notional on a 50,000 account = 6.5%, comfortably under the cap.
+        uncapped = position_size(50_000, 0.0025, 300, 288.38)
+        capped = position_size(50_000, 0.0025, 300, 288.38, max_position_pct=0.20)
+        self.assertAlmostEqual(uncapped, capped)
+
+    def test_rejects_invalid_cap(self):
+        for bad in (0.0, -0.1, 1.5):
+            with self.assertRaises(ValueError):
+                position_size(50_000, 0.0025, 300, 299.5, max_position_pct=bad)
+
 
 class TestDailyLossGuard(unittest.TestCase):
     def test_blocks_trading_once_limit_is_breached(self):

@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from app.data.point_in_time import SimulationCursor
-from app.features.indicators import atr as atr_indicator
+from app.features.indicators import atr_on_horizon
 from app.features.indicators import ema_series
 from app.features.indicators import relative_volume as relative_volume_indicator
 from app.features.indicators import session_vwap
@@ -81,22 +81,31 @@ def build_signal(
     risk_reward: float = 2.0,
     relative_volume_lookback: int = 20,
     calibrated_model: Optional[CalibratedModel] = None,
+    atr_horizon: str = "bar",
+    max_position_pct: Optional[float] = None,
 ) -> Optional[Signal]:
     """`None` if `strategy_action` isn't "BUY", or if there isn't yet
-    enough history to compute ATR."""
+    enough history to compute ATR.
+
+    `atr_horizon` selects the volatility horizon the stop is sized from
+    ('bar' = the strategy's own bars, or 'hour'/'day'), and
+    `max_position_pct` caps how much equity one position may tie up. Both
+    default to the previous behavior; see VALIDATION_PROTOCOL.md K2a for
+    why the horizon is a declared test grid rather than a tuned value.
+    """
     if strategy_action != "BUY":
         return None
 
     history = cursor.history
     entry = history[-1].close
 
-    atr_value = atr_indicator(history, atr_period)
+    atr_value = atr_on_horizon(history, atr_period, atr_horizon)
     if atr_value is None:
         return None
 
     stop = atr_stop_loss(entry, atr_value, atr_multiple)
     target = risk_reward_target(entry, stop, risk_reward)
-    shares = position_size(account_equity, risk_pct, entry, stop)
+    shares = position_size(account_equity, risk_pct, entry, stop, max_position_pct=max_position_pct)
     rel_vol = relative_volume_indicator(history, relative_volume_lookback)
 
     closes = [b.close for b in history]

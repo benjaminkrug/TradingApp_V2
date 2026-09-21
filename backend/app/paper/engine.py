@@ -76,6 +76,8 @@ class PaperTradingEngine:
         atr_period: int = 14,
         atr_multiple: float = 1.5,
         risk_reward: float = 2.0,
+        atr_horizon: str = "bar",
+        max_position_pct: Optional[float] = None,
         flatten_at_session_end: bool = True,
         earnings_provider: Optional[EarningsCalendarProvider] = None,
         earnings_blackout_days: int = 2,
@@ -104,6 +106,11 @@ class PaperTradingEngine:
         self.atr_period = atr_period
         self.atr_multiple = atr_multiple
         self.risk_reward = risk_reward
+        # VALIDATION_PROTOCOL.md K2a: stop volatility horizon (declared test
+        # grid, not a tuned value) and the 20%-style cap on how much equity
+        # a single position may tie up.
+        self.atr_horizon = atr_horizon
+        self.max_position_pct = max_position_pct
         # ROADMAP.md Abschnitt 14's pre-trade filter (app/signals/news_filter.py).
         # `earnings_provider=None` (the default) skips it entirely, preserving
         # every Phase 9/10 engine's exact prior behavior - this is additive,
@@ -246,6 +253,8 @@ class PaperTradingEngine:
             atr_period=self.atr_period,
             atr_multiple=self.atr_multiple,
             risk_reward=self.risk_reward,
+            atr_horizon=self.atr_horizon,
+            max_position_pct=self.max_position_pct,
         )
         if signal is not None:
             self._pending_order = PendingOrder(
@@ -277,6 +286,8 @@ def run_paper_trading_on_bars(
     atr_period: int = 14,
     atr_multiple: float = 1.5,
     risk_reward: float = 2.0,
+    atr_horizon: str = "bar",
+    max_position_pct: Optional[float] = None,
     flatten_at_session_end: bool = True,
     earnings_provider: Optional[EarningsCalendarProvider] = None,
     earnings_blackout_days: int = 2,
@@ -312,6 +323,8 @@ def run_paper_trading_on_bars(
             atr_period=atr_period,
             atr_multiple=atr_multiple,
             risk_reward=risk_reward,
+            atr_horizon=atr_horizon,
+            max_position_pct=max_position_pct,
             flatten_at_session_end=flatten_at_session_end,
             earnings_provider=earnings_provider,
             earnings_blackout_days=earnings_blackout_days,
@@ -346,6 +359,8 @@ def run_paper_trading(
     atr_period: int = 14,
     atr_multiple: float = 1.5,
     risk_reward: float = 2.0,
+    atr_horizon: str = "bar",
+    max_position_pct: Optional[float] = None,
     flatten_at_session_end: bool = True,
     earnings_provider: Optional[EarningsCalendarProvider] = None,
     earnings_blackout_days: int = 2,
@@ -373,6 +388,8 @@ def run_paper_trading(
         atr_period=atr_period,
         atr_multiple=atr_multiple,
         risk_reward=risk_reward,
+        atr_horizon=atr_horizon,
+        max_position_pct=max_position_pct,
         flatten_at_session_end=flatten_at_session_end,
         earnings_provider=earnings_provider,
         earnings_blackout_days=earnings_blackout_days,
