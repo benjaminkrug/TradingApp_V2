@@ -10,15 +10,20 @@ Bei der kritischen Nachprüfung von Phase 5/6 (12.08.2026) fiel derselbe Fehler 
 
 **Update 13.08.2026 (#6):** Vor Beginn von Phase 11 (Controlled Live Test) wurden dieselben drei Fragen einzeln gestellt wie zuvor bei #4/#5 — Kontostruktur, Kapitalhöhe, Reihenfolge News-Filter/Phase 11. Der Nutzer hat auf alle drei mit "keine Präferenz" geantwortet, anders als bei #4/#5/#7, wo jeweils eine konkrete Option aktiv gewählt wurde. Das ist **kein** "festgelegt" im selben Sinn: Es sind die in den Fragen selbst als Empfehlung markierten Defaults, angewendet, weil der Nutzer die Auswahl bewusst nicht treffen wollte — nicht individuell bestätigte Werte. Muss vor tatsächlichem Kapitaleinsatz erneut mit dem Nutzer bestätigt werden (siehe `PHASE11_NOTES.md`).
 
+**Update 21.09.2026 (#2 geändert, #8–#10 neu):** Nach der ersten Validierung gegen echte Marktdaten (siehe `REAL_DATA_VALIDATION_NOTES.md`) hat der Nutzer sein Primärziel als "ernsthaft profitabel werden" benannt und den Intraday-Zwang aus #2 aktiv aufgehoben. Begründung, die zu dieser Entscheidung geführt hat: Intraday hat das schlechteste Verhältnis von Handelskosten zu Signalgröße (unser gemessener Bruttovorteil von ~4 Basispunkten pro Trade lag vollständig innerhalb des realistischen Kostenbandes von 2–4 bp), und man konkurriert direkt mit HFT. Die in der Literatur belegten, schwerer wegarbitrierten Effekte liegen bei Haltedauern von Wochen bis Monaten.
+
 | # | Frage | Entscheidung | Stand |
 |---|---|---|---|
 | 1 | Aktienuniversum | Statische Liste ~30 liquide US-Large-Caps für MVP, kein Live-Scanner in v1 | festgelegt (Form) / **vorläufig** (konkrete Liste) |
-| 2 | Haltedauer | 30 Min – wenige Stunden, Exit spätestens Handelsende (Intraday) | festgelegt |
+| 2 | Haltedauer | ~~30 Min – wenige Stunden, Exit spätestens Handelsende (Intraday)~~ **Geändert 21.09.2026: Haltedauer offen, längere (Mehrtages-)Halteperioden ausdrücklich erlaubt.** Konsequenzen, die damit bewusst akzeptiert werden: (a) Stop-Loss schützt nicht gegen Eröffnungslücken, das Risiko pro Trade (#5) ist damit nur noch näherungsweise begrenzt; (b) Marktbeta kann Ergebnisse vortäuschen — wird über den Permutationstest in `VALIDATION_PROTOCOL.md` neutralisiert; (c) weniger Trades, daher mehr Historie nötig. Vorteil: Übernacht-Positionen sind keine Day Trades, die PDT-Regel aus #6 greift nicht mehr. | **geändert & festgelegt (21.09.2026)** |
 | 3 | Long/Short | Long only für MVP | festgelegt |
 | 4 | Datenanbieter | Alpaca (Start), Polygon.io optional später ergänzend | festgelegt (13.08.2026) |
 | 5 | Risiko pro Trade | 0,25 % des (simulierten) Kontos, fester Wert im Code | festgelegt (13.08.2026) |
 | 6 | PDT-Regel / Kontogröße (reales Live-Konto) | Default (keine Nutzerpräferenz): Cash-Konto (PDT-Regel gilt nicht für Cash-Konten), 750 USD | **Default, nicht individuell bestätigt** — vor echtem Kapitaleinsatz erneut mit dem Nutzer klären |
 | 7 | Paper-Trading-Startkapital (simuliert, ≠ #6) | 50.000 USD | festgelegt (13.08.2026) |
+| 8 | Strenge des Validierungs-Gates | **Streng:** alle Kriterien aus `VALIDATION_PROTOCOL.md` müssen gleichzeitig erfüllt sein. Bewusste Asymmetrie: ein Fehlalarm kostet echtes Geld, eine verpasste Chance nur Zeit. Alle Kennzahlen jedes Laufs werden **vollständig gespeichert** (nicht nur PASS/FAIL), damit Beinahe-Treffer später wieder aufgegriffen werden können. | festgelegt (21.09.2026) |
+| 9 | Slippage-Annahme | **Keine feste Zahl.** Das Gate läuft über eine Spanne von Slippage-Annahmen und weist den Break-even-Punkt aus ("dieser Edge stirbt ab X bp"). Bewusst so gewählt, um eine willkürliche Einzelannahme zu vermeiden, die einen echten Edge erschlagen oder einen eingebildeten am Leben halten könnte. | festgelegt (21.09.2026) |
+| 10 | Reihenfolge Datenbeschaffung | Erst Messapparat reparieren (kostenlos), dann Alpaca-Gratisdaten ausschöpfen, dann Databento-Startguthaben (125 USD, kein Abo) für breites Universum, **echtes Kapital zuletzt** und nur zur Ausführungsverifikation eines validierten Kandidaten. Begründung: Live-Kapital beantwortet "kann ich den Edge ausführen?", nicht "gibt es einen Edge?" — für letzteres ist der historische Backtest strikt überlegen. | festgelegt (21.09.2026) |
 
 ## Weitere technische Festlegungen (ROADMAP.md Abschnitt 17)
 
