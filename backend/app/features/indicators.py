@@ -90,11 +90,31 @@ def atr(bars: list[Bar], period: int) -> Optional[float]:
 
 def current_session_bars(bars: list[Bar]) -> list[Bar]:
     """Bars in `bars` belonging to the same exchange-local (America/New_York)
-    calendar date as the last bar — i.e. "today's bars so far"."""
+    calendar date as the last bar — i.e. "today's bars so far".
+
+    Scans backwards and stops at the first bar from an earlier session,
+    which relies on `bars` being chronologically ordered. Every caller
+    satisfies that by construction: `PointInTimeSeries` rejects unordered
+    input outright, and `StreamingCursor.append` enforces strictly
+    increasing timestamps.
+
+    That assumption is worth the dependency. The previous implementation
+    filtered the *entire* history on every call, converting each bar to New
+    York time to do it, which made this quadratic in history length.
+    Profiling a 2,000-bar backtest found 7.8 million `astimezone()` calls
+    spending ~6 seconds almost entirely here — prohibitive for the
+    validation gate (VALIDATION_PROTOCOL.md), which runs this across many
+    symbols, walk-forward windows and resamples.
+    """
     if not bars:
         return []
     session_date = bars[-1].timestamp.astimezone(NY_TZ).date()
-    return [b for b in bars if b.timestamp.astimezone(NY_TZ).date() == session_date]
+    first_index = len(bars)
+    for index in range(len(bars) - 1, -1, -1):
+        if bars[index].timestamp.astimezone(NY_TZ).date() != session_date:
+            break
+        first_index = index
+    return bars[first_index:]
 
 
 def session_vwap(bars: list[Bar]) -> Optional[float]:

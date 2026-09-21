@@ -88,6 +88,29 @@ class TestCurrentSessionBars(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].close, 2)
 
+    def test_returns_only_the_last_session_out_of_several(self):
+        """Guards the backwards-scan implementation: it stops at the first
+        bar of an earlier session, so it must not stop early inside the
+        current session, and must not reach back into older ones."""
+        bars = []
+        for day in (2, 3, 4):
+            start = datetime(2026, 1, day, 15, 0, tzinfo=timezone.utc)
+            for offset in range(3):
+                bars.append(bar(offset, day, day, day, day, 100, start=start))
+
+        result = current_session_bars(bars)
+
+        self.assertEqual(len(result), 3)
+        self.assertTrue(all(b.close == 4 for b in result))
+
+    def test_whole_history_is_one_session(self):
+        start = datetime(2026, 1, 2, 15, 0, tzinfo=timezone.utc)
+        bars = [bar(offset, 1, 1, 1, 1, 100, start=start) for offset in range(4)]
+        self.assertEqual(len(current_session_bars(bars)), 4)
+
+    def test_empty_history(self):
+        self.assertEqual(current_session_bars([]), [])
+
 
 class TestOpeningRange(unittest.TestCase):
     def test_matches_hand_calculation(self):

@@ -76,6 +76,7 @@ class PaperTradingEngine:
         atr_period: int = 14,
         atr_multiple: float = 1.5,
         risk_reward: float = 2.0,
+        flatten_at_session_end: bool = True,
         earnings_provider: Optional[EarningsCalendarProvider] = None,
         earnings_blackout_days: int = 2,
         volatility_short_period: int = 5,
@@ -89,6 +90,13 @@ class PaperTradingEngine:
         self.daily_loss_guard = daily_loss_guard
         self.risk_pct = risk_pct
         self.fee_per_share = fee_per_share
+        # DECISIONS.md #2 required intraday-only exits until 21.09.2026, when
+        # it was changed to allow longer holds. Defaults to the old behavior
+        # so every existing caller keeps its semantics; the validation gate
+        # sets it explicitly, and comparing both settings on the same data is
+        # itself a question worth answering (see REAL_DATA_VALIDATION_NOTES.md,
+        # where overnight holding turned out to be carrying the measured edge).
+        self.flatten_at_session_end = flatten_at_session_end
         # Passed through to build_signal() explicitly rather than relying on
         # its defaults, so callers (and tests, which need small windows to
         # stay hand-verifiable) can control them - see build_signal()'s own
@@ -116,7 +124,7 @@ class PaperTradingEngine:
 
         session_date = _session_date(bar)
         if self._current_session_date is not None and session_date != self._current_session_date:
-            self._flatten_for_session_rollover()
+            self._on_session_rollover()
             self.daily_loss_guard.reset()
         self._current_session_date = session_date
 
@@ -127,15 +135,23 @@ class PaperTradingEngine:
         self._check_stop_target(bar)
         self._evaluate_strategy()
 
-    def _flatten_for_session_rollover(self) -> None:
-        """ROADMAP.md Abschnitt 2: exit spätestens Handelsende (intraday
-        only). Closes any still-open position at the last bar of the
-        session that just ended - an approximation of a market-on-close
-        fill (the actual closing-auction price is not modeled), applied
-        because nothing here waits for one final "session close" event;
-        the first bar of the *next* session is what tells us the previous
-        one ended."""
-        if self.symbol in self.portfolio.positions and self.cursor.history:
+    def _on_session_rollover(self) -> None:
+        """Two separate things happen when a new session starts.
+
+        An unfilled day order never carries into the next session - that is
+        an order-type semantic and applies regardless of holding period.
+
+        Closing a still-open *position* is the intraday rule from
+        ROADMAP.md Abschnitt 2 / DECISIONS.md #2, and is conditional on
+        `flatten_at_session_end` since that decision was opened up on
+        21.09.2026. When it applies, the position is closed at the last bar
+        of the session that just ended - an approximation of a
+        market-on-close fill (the actual closing-auction price is not
+        modeled), applied here because nothing waits for a "session close"
+        event; the first bar of the *next* session is what reveals that the
+        previous one ended.
+        """
+        if self.flatten_at_session_end and self.symbol in self.portfolio.positions and self.cursor.history:
             last_bar_of_prior_session = self.cursor.history[-1]
             _, pnl = self.portfolio.close_position(
                 self.symbol,
@@ -249,14 +265,11 @@ class PaperTradingResult:
     daily_loss_guard: DailyLossGuard
 
 
-def run_paper_trading(
-    provider: MarketDataProvider,
+def run_paper_trading_on_bars(
+    bars: list[Bar],
     symbols: list[str],
     strategy_factory: StrategyFactory,
     strategy_name: str,
-    start: date,
-    end: date,
-    timeframe: str,
     starting_equity: float,
     risk_pct: float,
     fee_per_share: float,
@@ -264,20 +277,25 @@ def run_paper_trading(
     atr_period: int = 14,
     atr_multiple: float = 1.5,
     risk_reward: float = 2.0,
+    flatten_at_session_end: bool = True,
     earnings_provider: Optional[EarningsCalendarProvider] = None,
     earnings_blackout_days: int = 2,
     volatility_short_period: int = 5,
     volatility_baseline_period: int = 20,
     volatility_expansion_multiple: float = 2.5,
 ) -> PaperTradingResult:
-    """Multi-symbol paper-trading driver: pulls each symbol's bars from
-    `provider` (any `MarketDataProvider` - `FakeProvider` for tests/demos
-    today, `AlpacaProvider` once it is a verified implementation, see
-    PHASE3_NOTES.md/PHASE9_NOTES.md), merges them into one globally
-    chronological stream, and dispatches each bar to that symbol's
-    `PaperTradingEngine`. All symbols share one `Portfolio` and one
-    `DailyLossGuard`, so position sizing and the daily kill-switch both
-    operate on the whole account, not per symbol in isolation.
+    """Runs the paper-trading rules over bars the caller already holds.
+
+    Split out from `run_paper_trading` (which fetches from a provider first)
+    because the validation gate works on bar lists it has already sliced -
+    in-sample/out-of-sample splits and walk-forward windows - and must run
+    them through the same execution logic that paper and live trading use.
+    That is criterion K2 in VALIDATION_PROTOCOL.md: the gate has to grade
+    the rules that would actually be traded, not a simplified stand-in.
+
+    All symbols share one `Portfolio` and one `DailyLossGuard`, so position
+    sizing and the daily kill-switch operate on the whole account rather
+    than per symbol in isolation.
     """
     portfolio = Portfolio(starting_equity)
     daily_loss_guard = DailyLossGuard(max_daily_loss)
@@ -294,6 +312,7 @@ def run_paper_trading(
             atr_period=atr_period,
             atr_multiple=atr_multiple,
             risk_reward=risk_reward,
+            flatten_at_session_end=flatten_at_session_end,
             earnings_provider=earnings_provider,
             earnings_blackout_days=earnings_blackout_days,
             volatility_short_period=volatility_short_period,
@@ -303,14 +322,61 @@ def run_paper_trading(
         for symbol in symbols
     }
 
+    # Stable sort by timestamp only: bars for different symbols at the same
+    # timestamp keep their original order (arbitrary but deterministic),
+    # which is fine since each engine only looks at its own symbol's bars.
+    for bar in sorted(bars, key=lambda b: b.timestamp):
+        engines[bar.symbol].on_bar(bar)
+
+    return PaperTradingResult(portfolio=portfolio, daily_loss_guard=daily_loss_guard)
+
+
+def run_paper_trading(
+    provider: MarketDataProvider,
+    symbols: list[str],
+    strategy_factory: StrategyFactory,
+    strategy_name: str,
+    start: date,
+    end: date,
+    timeframe: str,
+    starting_equity: float,
+    risk_pct: float,
+    fee_per_share: float,
+    max_daily_loss: float,
+    atr_period: int = 14,
+    atr_multiple: float = 1.5,
+    risk_reward: float = 2.0,
+    flatten_at_session_end: bool = True,
+    earnings_provider: Optional[EarningsCalendarProvider] = None,
+    earnings_blackout_days: int = 2,
+    volatility_short_period: int = 5,
+    volatility_baseline_period: int = 20,
+    volatility_expansion_multiple: float = 2.5,
+) -> PaperTradingResult:
+    """Multi-symbol paper-trading driver: pulls each symbol's bars from
+    `provider` (any `MarketDataProvider`), merges them into one globally
+    chronological stream, and runs them through `run_paper_trading_on_bars`.
+    """
     all_bars: list[Bar] = []
     for symbol in symbols:
         all_bars.extend(provider.get_bars(symbol, start, end, timeframe))
 
-    # Stable sort by timestamp only: bars for different symbols at the same
-    # timestamp keep provider order (arbitrary but deterministic), which is
-    # fine here since each engine only ever looks at its own symbol's bars.
-    for bar in sorted(all_bars, key=lambda b: b.timestamp):
-        engines[bar.symbol].on_bar(bar)
-
-    return PaperTradingResult(portfolio=portfolio, daily_loss_guard=daily_loss_guard)
+    return run_paper_trading_on_bars(
+        bars=all_bars,
+        symbols=symbols,
+        strategy_factory=strategy_factory,
+        strategy_name=strategy_name,
+        starting_equity=starting_equity,
+        risk_pct=risk_pct,
+        fee_per_share=fee_per_share,
+        max_daily_loss=max_daily_loss,
+        atr_period=atr_period,
+        atr_multiple=atr_multiple,
+        risk_reward=risk_reward,
+        flatten_at_session_end=flatten_at_session_end,
+        earnings_provider=earnings_provider,
+        earnings_blackout_days=earnings_blackout_days,
+        volatility_short_period=volatility_short_period,
+        volatility_baseline_period=volatility_baseline_period,
+        volatility_expansion_multiple=volatility_expansion_multiple,
+    )
