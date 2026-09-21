@@ -178,7 +178,7 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 
 ## 9. Bekannte offene Punkte (über alle Phasen konsolidiert)
 
-- **`AlpacaProvider` seit 21.09.2026 echt implementiert** (hermetisch per Mock-Tests verifiziert, Netzwerkzugriff auf den echten Endpoint per curl bestätigt) — **aber noch kein End-to-End-Lauf mit echten Paper-Keys**, da Claude Codes Tool-Sandbox `.env`-Secrets nicht lesen kann (s. Abschnitt 3). Nutzer muss `backend/scripts/verify_alpaca_connection.py` selbst ausführen und Ergebnis zurückmelden. `PolygonProvider` bleibt reiner Stub (laut DECISIONS.md #4 ohnehin nur optional/später).
+- ~~`AlpacaProvider`/`PolygonProvider` sind reine Stubs~~ **`AlpacaProvider` seit 21.09.2026 echt implementiert UND end-to-end mit echten Paper-Keys verifiziert** (Nutzer hat `backend/scripts/verify_alpaca_connection.py` selbst ausgeführt: SUCCESS, 6 echte AAPL-Tagesbars zurückbekommen). `PolygonProvider` bleibt reiner Stub (laut DECISIONS.md #4 ohnehin nur optional/später).
 - **Konkrete Ticker-Liste in `scanner.py`** nie vom Nutzer geprüft (nur die allgemeine Form "~30 Large-Caps" wurde bestätigt).
 - **News-Relevanz-Prüfung existiert nicht**, nicht mal als Stub (`app/signals/news_filter.py`'s `check_relevant_news()` — bewusst, siehe `PHASE11_NOTES.md`, da "relevant" eine Einschätzungsfrage ist, die der Code nicht beurteilen kann).
 - **Kein echter Forward-Test-Datensatz** — `ForwardTestSession` ist nur gegen synthetische Daten demonstriert.
@@ -201,8 +201,7 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 
 ### Phase B — Code lauffähig machen
 3. ✅ `pip install -e ".[dev]"` — am PC bereits vorhanden, 229/229 Tests laufen grün.
-4. ✅ **`AlpacaProvider.get_bars()` implementiert** (21.09.2026) — echte Anbindung an `data.alpaca.markets`, hermetisch getestet.
-4b. **Offen:** Nutzer führt `cd backend && PYTHONPATH=. python scripts/verify_alpaca_connection.py` selbst aus (Paper-Keys müssen in `.env` stehen) und meldet das Ergebnis zurück — erst dann gilt Punkt 4 als vollständig end-to-end verifiziert, nicht nur hermetisch getestet.
+4. ✅ **`AlpacaProvider.get_bars()` implementiert und end-to-end verifiziert** (21.09.2026) — echte Anbindung an `data.alpaca.markets`, hermetisch getestet UND vom Nutzer selbst mit echten Paper-Keys erfolgreich gegen echte AAPL-Kursdaten gelaufen (`backend/scripts/verify_alpaca_connection.py`, Ergebnis: 6 Tagesbars).
 5. ✅ `.env` mit echten Paper-Keys befüllt (`.env` ist in `.gitignore`, wird nie committet).
 6. Backend starten (`uvicorn app.api.main:app --reload`), Frontend starten (`npm install && npm run dev`) — noch offen.
 7. **Alternativ/zusätzlich:** Falls Alpaca-Keys als GitHub-Actions-Secrets hinterlegt werden, einen Verbindungs-Probe-Job in `.github/workflows/ci.yml` bauen — exakt das Muster, mit dem `nautilus_trader` in Phase 2 verifiziert wurde (`probe-nautilus-trader`-Job als Vorlage). Noch nicht gemacht.
