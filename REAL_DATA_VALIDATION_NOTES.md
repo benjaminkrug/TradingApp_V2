@@ -39,9 +39,35 @@ Monte Carlo bewusst **NOT_AUTOMATED** gelassen (kein `monte_carlo_drawdown_thres
 
 Beim ersten "Smoke-Test" dieses Skripts mit angeblich synthetischen Daten lief versehentlich ein echter Alpaca-Call — Claude kann `.env`-Secrets in dieser Umgebung tatsächlich lesen, sobald die Datei gespeichert ist (keine Sandbox-Sperre, wie zuvor fälschlich dokumentiert). Der Call war harmlos (nur Kursdaten lesen, keine Order), aber ungeplant. Für künftige Arbeit mit echten Zugangsdaten: bewusst vorsichtig bleiben, nicht auf eine technische Bremse verlassen, die es nicht gibt.
 
+## Nachtrag 21.09.2026 — vollständiges Gate nach `VALIDATION_PROTOCOL.md`
+
+Messapparat repariert (K2, K2a, K3–K7 implementiert, 270 Tests grün), dann alle 27 Konfigurationen (3 Strategien × 3 Symbole × 3 Stop-Horizonte) auf der Out-of-Sample-Hälfte durchlaufen lassen.
+
+**Ergebnis: 0 von 27 Konfigurationen bestehen.**
+
+Das allein wäre bei diesem Datenumfang zu erwarten gewesen. Entscheidend ist *woran* sie scheitern:
+
+| Kriterium | Ergebnis über alle 27 Läufe |
+|---|---|
+| K1 Datenlecks | überall sauber |
+| K3 Netto nach 2 bp Kosten | 17 von 27 positiv, Break-even teils 8–24 bp — **wirtschaftlich unproblematisch** |
+| K4 Signifikanz (Tagesblock-Bootstrap) | t-Median **+0,04**, Maximum +1,16, **keiner erreicht 2,0** |
+| K5 Stichprobengröße | überall zu klein (OOS-Fenster ist nur ~41 Handelstage) |
+| K6 Marktphasen | nicht anwendbar — die Daten enthalten nur eine Phase |
+| K7 Permutationstest | p-Median **0,799**, Minimum 0,156, **keiner unter 0,05** |
+
+**K7 ist der eigentliche Befund.** Unter einer echten Nullhypothese wären die p-Werte gleichverteilt, also im Median 0,50. Beobachtet: **0,799.** Das heißt, zufällig gewürfelte Einstiegszeitpunkte — bei gleicher Anzahl Trades, gleichen Handelstagen und gleicher Haltedauer — schlagen unsere Strategien in typischerweise rund 80 % der Ziehungen. Das Einstiegs-Timing trägt nicht nur keine Information, es ist tendenziell **schlechter als Zufall**.
+
+Plausible Erklärung, ohne sie überzustrapazieren: Alle drei Strategien steigen ein, *nachdem* eine Bewegung begonnen hat (Ausbruch, Momentum, Pullback-Ende). Wenn auf 5-Minuten-Ebene leichte Rückkehr zum Mittelwert herrscht, ist ein Einstieg nach der Bewegung systematisch ungünstiger als ein beliebiger Zeitpunkt.
+
+**Bekannte Schwäche dieses Tests, die nicht nachträglich wegdefiniert wird:** Der Permutationstest zieht Einstiege gleichverteilt über die Handelssession, während die echten Strategien nur zu bestimmten Tageszeiten handeln (ORB z. B. erst nach den ersten 30 Minuten). Falls die Tagesrendite ungleich über die Session verteilt ist, verzerrt das den Vergleich — in unbekannter Richtung. Die Testkonstruktion stand so vorab in `VALIDATION_PROTOCOL.md` und wird **nicht** nach Kenntnis des Ergebnisses geändert; eine zeitfenster-gematchte Variante wäre eine eigene, erneut vorab zu registrierende Verfeinerung.
+
+**Was das für die „mehr Daten"-Hypothese bedeutet:** Das Gate weist pro Konfiguration aus, wie viel Historie nötig wäre, um bei unverändertem Effekt t = 2 zu erreichen — die Spanne reicht von ~0,5 Jahren bis zu mehreren Jahrhunderten, bei 8 Konfigurationen lautet die Antwort „nie, der Netto-Edge ist nicht positiv". Diese Rechnung unterstellt aber, dass der gemessene Effekt echt ist. K7 sagt genau das Gegenteil. **Mehr Daten für dieselben Strategien zu kaufen, wäre daher voraussichtlich verschwendetes Geld** — die Evidenz spricht nicht für „noch nicht nachweisbar", sondern für „kein Effekt vorhanden".
+
 ## Was noch offen ist
 
-1. **Weitere Symbole gegen Opening Range Breakout testen** (`PYTHONPATH=. python scripts/real_data_gate_run.py SYMBOL`) — 2/3 ist eine schwache Basis, keine Validierung. VWAP Momentum und EMA Pullback nicht mehr priorisieren, solange sie mehrheitlich durchfallen.
-2. **Andere Zeiträume testen**, nicht nur überlappende ~6,5-Monats-Fenster — aktuell keine Aussage über unterschiedliche Marktphasen (z. B. Bär- vs. Bullenmarkt) möglich.
-3. **Monte-Carlo-Drawdown-Schwelle** ist eine offene Geschäftsentscheidung (wie DECISIONS.md #5/#6) — mit dem Nutzer klären, falls gewünscht, bevor eine Strategie als vollständig automatisiert-geprüft gilt.
-4. **Erst danach:** Falls Opening Range Breakout auf weiteren Symbolen/Zeiträumen mehrheitlich besteht, als Kandidat für den echten Forward-Test (Phase C, `ForwardTestSession`) auswählen. Aktuell (Stand 21.09.2026) ist noch keine Strategie so weit — das ist ein ehrliches Zwischenergebnis, kein Fehler in der Pipeline.
+1. **Keine der drei Strategien ist ein Forward-Test-Kandidat.** Weitere Symbole oder Zeiträume für *diese* Strategien zu testen, ist laut K7 voraussichtlich vergeudet — das Einstiegs-Timing trägt keine Information.
+2. **Der belegte Hebel liegt in der Titelauswahl, nicht im Einstiegsmuster.** Die Literatur ist hier eindeutig: ungefiltertes ORB über ein festes Universum bringt 3,2 % p. a. (Sharpe 0,48), mit Filter auf *Opening Relative Volume* dagegen 41,6 % p. a. (Sharpe 2,81) — „opening relative volume did almost all the work". Unser System handelt stur dieselben Large Caps jeden Tag und besitzt diese Auswahlschicht überhaupt nicht. Das ist die nächste sinnvolle Baustelle, falls weitergebaut wird.
+3. **Zeitfenster-gematchte Variante von K7** wäre eine sinnvolle methodische Verfeinerung (siehe Schwäche oben) — muss vorab registriert werden, bevor sie gerechnet wird.
+4. **Monte-Carlo-Drawdown-Schwelle** bleibt eine offene Geschäftsentscheidung (wie DECISIONS.md #5/#6).
+5. **Nicht mehr offen, sondern beantwortet:** Der Messapparat funktioniert. Er hat die zunächst vielversprechend aussehenden Kandidaten korrekt als Rauschen eingeordnet, und seine beiden statistischen Kernbausteine sind gegen analytisch bekannte Fälle verifiziert (Bootstrap-Korrektur folgt exakt √k über k = 1…25; Permutationstest erkennt echtes Timing mit p < 0,01 und beliebiges Timing mit p > 0,05).

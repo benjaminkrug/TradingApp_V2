@@ -1,6 +1,6 @@
 # CLAUDE.md — Projektgedächtnis / Handoff
 
-**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 21.09.2026, nach Abschluss von Phase B und erstem Echte-Daten-Validierungslauf (siehe `REAL_DATA_VALIDATION_NOTES.md`).
+**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 21.09.2026, nach Reparatur des Messapparats und vollständigem Gate-Durchlauf (siehe `VALIDATION_PROTOCOL.md` und `REAL_DATA_VALIDATION_NOTES.md`).
 
 **Für den Nutzer:** Wenn du eine neue Claude-Code-Session öffnest (z. B. an deinem PC), lädt sie diese Datei automatisch. Du kannst direkt "mach weiter" o. ä. sagen — Claude hat dann den vollen Kontext.
 
@@ -10,16 +10,16 @@
 
 Ein AI-gestütztes Research-/Signal-/Paper-Trading-System für US-Aktien — **explizit kein Buy-and-Hold-Tool und kein vollautomatischer Trading-Bot.** Research- und Lerntool, keine Anlageberatung (siehe `DISCLAIMER.md`, wird in der Web-App als Banner angezeigt). Vollständige fachliche Spezifikation: `ROADMAP.md` (v2, ~20 Abschnitte, mit `[v2]`-Markern für alles, was gegenüber der ursprünglichen Nutzer-Roadmap verändert wurde, basierend auf Analyse + Transkript-Auswertung von DaviddTechs Trading-Methodik).
 
-Alle 11 Phasen aus `ROADMAP.md` Abschnitt 19 sind implementiert (Details unten, Abschnitt 4). **229 Tests lokal grün** (Stand 21.09.2026, am PC), CI-Stand für die neuen Tests noch nicht gepusht/geprüft.
+Alle 11 Phasen aus `ROADMAP.md` Abschnitt 19 sind implementiert (Details unten, Abschnitt 4). **270 Tests lokal grün** (Stand 21.09.2026). Seit 21.09.2026 gilt zusätzlich das vorregistrierte `VALIDATION_PROTOCOL.md` — der frühere 12-Punkte-Gate in `app/validation/gate.py` ist dadurch überholt (sein `walk_forward_stable`-Kriterium ließ eine wertlose Strategie in 50 % der Fälle bestehen).
 
 ---
 
 ## 2. Git-Stand
 
 - **Branch:** `claude/ai-trading-app-roadmap-w0nrm2`
-- **Letzter Commit:** `8df70d0` ("Phase 11: record confirmed green CI result")
+- **Letzter Commit:** `a957795` (vollständiges Gate nach VALIDATION_PROTOCOL.md)
 - **Remote:** `https://github.com/benjaminkrug/TradingApp_V2`
-- Lokaler Stand und `origin/claude/ai-trading-app-roadmap-w0nrm2` sind deckungsgleich (Stand 13.08.2026).
+- Lokaler Stand und `origin/claude/ai-trading-app-roadmap-w0nrm2` sind deckungsgleich (Stand 21.09.2026).
 - **Noch kein Pull Request erstellt** — der Branch liegt direkt auf GitHub, aber wurde nie in `main` gemerged. Das ist eine offene Entscheidung: PR erstellen? In `main` mergen? Bisher nicht gefragt/entschieden.
 
 ---
@@ -37,7 +37,7 @@ Alle drei geben `403 Forbidden` mit `x-deny-reason: host_not_allowed` (Organisat
 
 **Am PC sollte das alles anders sein** — echter Netzwerkzugriff heißt: `pip install`, `npm install`, und potenziell sogar eine echte Alpaca-Verbindung sind jetzt möglich. Das ist der Hauptgrund, warum diese Handoff-Datei existiert: Viele "nie verifiziert"-Punkte aus den PHASE-Notes lassen sich am PC zum ersten Mal wirklich testen.
 
-**Bestätigt am 21.09.2026:** Am PC sind `fastapi`/`httpx` bereits installiert, alle 229 Tests laufen lokal grün (statt 217+7 skipped), und Netzwerkzugriff auf `data.alpaca.markets` funktioniert wirklich (per `curl` verifiziert, inkl. Alpacas eigener CORS-Header).
+**Bestätigt am 21.09.2026:** Am PC sind `fastapi`/`httpx` bereits installiert, alle Tests laufen lokal grün (statt 217+7 skipped), und Netzwerkzugriff auf `data.alpaca.markets` funktioniert wirklich (per `curl` verifiziert, inkl. Alpacas eigener CORS-Header).
 
 **Korrigierter Punkt (ursprünglich falsch dokumentiert):** Kurzzeitig sah es so aus, als könnte Claude Codes Tool-Sandbox die echten Secret-Werte aus `.env` nicht lesen (leere Strings bei `Read`/`Bash`). **Das stimmt nicht** — die Datei war zu dem Zeitpunkt im Editor nur noch ungespeichert (ohne Inhalt auf der Festplatte), keine Sandbox-Sperre. Sobald gespeichert, kann Claude `.env`-Secrets ganz normal lesen und für echte API-Calls verwenden. **Wichtige Konsequenz für künftige Sessions:** Es gibt keine technische Bremse, die Claude daran hindert, mit echten Zugangsdaten aus `.env` echte (auch kostenpflichtige oder folgenreiche) API-Calls zu machen — das muss durch bewusstes Verhalten sichergestellt werden, nicht durch die Umgebung. Bei echten Broker-/API-Keys: vor einem tatsächlichen Call kurz überlegen, ob er wirklich gewollt ist, nicht einfach weil er technisch möglich ist. Details zur Korrektur: `PHASE3_NOTES.md`.
 
@@ -69,7 +69,7 @@ Jede Phase hat eine eigene `PHASE<N>_NOTES.md` im Repo-Root mit vollem Detail (w
 | 10 | Forward Testing | `ForwardTestSession` — Infrastruktur für über echte Zeit verteilte Tests, kein echtes Ergebnis (siehe unten) | `PHASE10_NOTES.md` |
 | 11 | Controlled Live Test | News/Earnings-Pre-Trade-Gate, `evaluate_live_readiness()`-Checkliste — **keine Order-Ausführungsfähigkeit** (bewusst) | `PHASE11_NOTES.md` |
 
-**Test-Stand (aktualisiert 21.09.2026, am PC verifiziert):** 229 Tests gesamt (224 + 5 neu für den echten `AlpacaProvider`), alle laufen lokal grün mit installierten Dependencies (`fastapi`/`httpx` waren am PC schon vorhanden). Die alten "217 laufen, 7 übersprungen"-Zahlen galten nur für die alte Sandbox ohne `pip install` — dort nicht mehr relevant, seit am PC gearbeitet wird.
+**Test-Stand (aktualisiert 21.09.2026, am PC verifiziert):** 270 Tests, alle grün. Zuwachs gegenüber den ursprünglichen 224: echter `AlpacaProvider`, Ergebnisspeicher, Bewertung über die echten Handelsregeln, Stop-Horizont-Aggregation und die Kriterien K3–K7. Die alten "217 laufen, 7 übersprungen"-Zahlen galten nur für die alte Sandbox ohne `pip install`.
 
 ---
 
@@ -126,7 +126,8 @@ ROADMAP.md              Volle fachliche Spezifikation (Pflichtlektüre bei Unsic
 DECISIONS.md            Siehe Abschnitt 5
 DISCLAIMER.md           Research-/Paper-Trading-Disclaimer, im Frontend sichtbar
 PHASE2_NOTES.md … PHASE11_NOTES.md   Ein Dokument pro Phase, volles Detail
-REAL_DATA_VALIDATION_NOTES.md   Gate-Läufe der Phase-4-Strategien gegen echte Alpaca-Daten, 3 Symbole (21.09.2026) — keine Strategie besteht konsistent, Opening Range Breakout am stärksten (2/3)
+VALIDATION_PROTOCOL.md          Vorregistriertes Prüfprotokoll (K1-K7). Vor jedem Lauf geschrieben, Git-Zeitstempel als Beleg. Pflichtlektüre vor jeder Änderung an der Validierung.
+REAL_DATA_VALIDATION_NOTES.md   Alle Gate-Läufe gegen echte Alpaca-Daten (21.09.2026) — 0 von 27 Konfigurationen bestehen; K7 zeigt fehlende Timing-Information
 transkript/              4 YouTube-Transkripte (DaviddTech-Methodik), Basis für ROADMAP v2
 ```
 
@@ -194,7 +195,7 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 - ~~`package-lock.json` fehlt~~ **Behoben 21.09.2026** — erster lokaler `npm install` hat ihn erzeugt, committet, CI nutzt jetzt `npm ci` statt `npm install`.
 - **Web-App (Dashboard/Signals/Trades-API) nutzt weiterhin synthetische Demo-Daten**, nicht die jetzt echte `AlpacaProvider`-Anbindung — `/api/dashboard` meldet das ehrlich selbst (`"data_source":"synthetic_demo"`). Umstellung auf echte Daten ist noch offen (Teil von Phase C, siehe Abschnitt 10).
 - **Kein Pull Request erstellt**, Branch liegt direkt auf GitHub ohne Merge nach `main`.
-- **Keine der 3 Phase-4-Strategien besteht das Gate konsistent auf echten Daten** (AAPL/MSFT/NVDA getestet, s. `REAL_DATA_VALIDATION_NOTES.md`): VWAP Momentum 0/3, EMA Pullback 1/3, Opening Range Breakout 2/3. Opening Range Breakout ist der einzige noch nicht widerlegte Kandidat, aber NICHT validiert — 2/3 auf überlappenden Zeiträumen ist eine schwache Basis.
+- **Keine der 3 Phase-4-Strategien besteht das vollständige Gate — 0 von 27 Konfigurationen** (3 Strategien × 3 Symbole × 3 Stop-Horizonte, s. `REAL_DATA_VALIDATION_NOTES.md`). Entscheidend ist das *Warum*: Der Permutationstest (K7) ergibt einen p-Median von 0,799 — zufälliges Einstiegs-Timing schlägt unsere Strategien typischerweise in ~80 % der Ziehungen. Das Timing trägt keine Information. **Mehr Daten für diese Strategien zu kaufen wäre daher voraussichtlich verschwendet.**
 - **Monte-Carlo-Drawdown-Schwelle ist eine offene Geschäftsentscheidung** (wie DECISIONS.md #5/#6) — bisher bewusst nicht gesetzt, Punkt bleibt `NOT_AUTOMATED`.
 
 ---
