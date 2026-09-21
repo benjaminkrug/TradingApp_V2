@@ -100,6 +100,26 @@ class TestAlpacaProvider(unittest.TestCase):
         self.assertEqual(captured["params"]["start"], "2026-01-01")
         self.assertEqual(captured["params"]["end"], "2026-01-31")
         self.assertEqual(captured["params"]["feed"], "iex")
+        self.assertEqual(captured["params"]["adjustment"], "raw")
+
+    def test_adjustment_defaults_to_raw_but_is_overridable(self):
+        """21.09.2026: 'raw' leaves stock splits in as a fake price
+        discontinuity (NVDA's 10:1 split reads as a fake -90% overnight
+        move) - any caller doing a multi-year backtest must be able to ask
+        for 'split'-adjusted data instead."""
+        captured: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["adjustment"] = dict(request.url.params)["adjustment"]
+            return httpx.Response(200, json={"bars": [], "next_page_token": None})
+
+        provider = AlpacaProvider(
+            api_key="x", api_secret="y", adjustment="split",
+            client=httpx.Client(transport=make_transport(handler)),
+        )
+        provider.get_bars("NVDA", date(2024, 1, 1), date(2024, 12, 31), "1Day")
+
+        self.assertEqual(captured["adjustment"], "split")
 
     def test_parses_bars_from_a_single_page_response(self):
         def handler(request: httpx.Request) -> httpx.Response:

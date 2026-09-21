@@ -49,14 +49,31 @@ class AlpacaProvider(MarketDataProvider):
         api_key: str,
         api_secret: str,
         feed: str = "iex",
+        adjustment: str = "raw",
         timeout: float = 10.0,
         client: httpx.Client | None = None,
     ):
+        """`adjustment` controls whether Alpaca rewrites historical prices
+        for corporate actions - "raw" (the default, kept for backward
+        compatibility with every prior verified run of this class), "split",
+        "dividend", or "all". Found the hard way (21.09.2026, see
+        PHASE3_NOTES.md): "raw" leaves stock splits in the data as a fake
+        discontinuity - NVDA's 10:1 split shows up as its close dropping
+        from $1208 to a $120 open overnight, which a naive return
+        calculation reads as a real -90% move. Every multi-year backtest
+        must pass `adjustment="split"` (or "all") explicitly; the default
+        stays "raw" only so this constructor doesn't silently change
+        behavior for the short, split-free windows already verified against
+        it (see PHASE3_NOTES.md / REAL_DATA_VALIDATION_NOTES.md - AAPL/MSFT/
+        NVDA over 2026-03-05..2026-09-21 had no split in that window, so
+        those results are unaffected, but nothing there guarded against it).
+        """
         if not api_key or not api_secret:
             raise ValueError("AlpacaProvider requires a non-empty api_key and api_secret")
         self._api_key = api_key
         self._api_secret = api_secret
         self._feed = feed
+        self._adjustment = adjustment
         self._timeout = timeout
         self._client = client
 
@@ -71,7 +88,7 @@ class AlpacaProvider(MarketDataProvider):
             "start": start.isoformat(),
             "end": end.isoformat(),
             "limit": _MAX_LIMIT_PER_PAGE,
-            "adjustment": "raw",
+            "adjustment": self._adjustment,
             "feed": self._feed,
         }
 

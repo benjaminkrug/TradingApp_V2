@@ -26,10 +26,16 @@ from app.data.providers.alpaca import AlpacaProvider
 START = date(2021, 1, 1)
 END = date.today()
 TIMEFRAME = "1Day"
+# "raw" (AlpacaProvider's default) leaves stock splits in as a fake price
+# discontinuity - see app/data/providers/alpaca.py's docstring and
+# PHASE3_NOTES.md (NVDA's 10:1 split read as a fake -90% overnight move
+# the first time this ran without this override, 21.09.2026). A multi-year
+# daily-bar backtest across hundreds of symbols will hit splits routinely.
+ADJUSTMENT = "split"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONSTITUENTS_CSV = REPO_ROOT / "backend" / "data_cache" / "sp500_constituents.csv"
-OUT_DIR = REPO_ROOT / "backend" / "data_cache" / "daily_bars"
+OUT_DIR = REPO_ROOT / "backend" / "data_cache" / "daily_bars_split_adjusted"
 
 
 def _load_dotenv(path: Path) -> None:
@@ -59,7 +65,7 @@ def main() -> int:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     symbols = load_symbols()
-    provider = AlpacaProvider(api_key=api_key, api_secret=api_secret, timeout=30.0)
+    provider = AlpacaProvider(api_key=api_key, api_secret=api_secret, adjustment=ADJUSTMENT, timeout=30.0)
 
     fetched, cached, failed = 0, 0, []
     for i, symbol in enumerate(symbols, 1):
