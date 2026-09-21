@@ -25,9 +25,20 @@ Anders als bei Nautilus Trader in Phase 2 lässt sich das hier **nicht** einfach
 
 Zusätzlich: `Bar` und `Fill` haben jetzt ein `symbol`-Feld (fehlte in Phase 2 — für einen Single-Symbol-Testfall unschädlich, aber Phase 3 handelt von echten Multi-Symbol-Daten). `PointInTimeSeries` lehnt jetzt gemischte Symbole ab. Alle 17 Phase-2-Tests laufen nach diesem Umbau weiterhin grün.
 
+## Nachtrag 21.09.2026 — Alpaca-Anbindung implementiert (am PC, nicht mehr in der Sandbox)
+
+`AlpacaProvider.get_bars()` (`backend/app/data/providers/alpaca.py`) ist jetzt eine echte Implementierung gegen die Alpaca Market Data API v2 (`GET /v2/stocks/{symbol}/bars` auf `data.alpaca.markets` — bewusst ein anderer Host als `ALPACA_BASE_URL`/`paper-api.alpaca.markets`, das ist der Trading/Account-Endpoint, nicht der Marktdaten-Endpoint). Pagination über `next_page_token`, `feed=iex` als Default (kostenlose Accounts bekommen nur IEX, nicht das konsolidierte SIP-Tape), `httpx` jetzt echte Laufzeit-Abhängigkeit (vorher nur in `dev`-Extras für FastAPI-Tests).
+
+**Was tatsächlich verifiziert wurde:**
+- Netzwerkzugriff auf `data.alpaca.markets` funktioniert von dieser Umgebung aus (anders als in der alten Sandbox) — per `curl` bestätigt, inklusive Alpacas eigener CORS-Header (`Access-Control-Allow-Headers: Apca-Api-Key-Id, Apca-Api-Secret-Key`), also wirklich der echte Server, keine Firmen-Firewall dazwischen.
+- 9 neue hermetische Unit-Tests (`tests/test_providers.py`, `httpx.MockTransport`, kein Netzwerk) verifizieren URL/Header/Parameter-Konstruktion, Antwort-Parsing, Pagination, 401-Behandlung. Alle 229 Tests (vorher 224) laufen lokal grün.
+- Der alte Test "wirft NotImplementedError" wurde entfernt (Provider ist kein Stub mehr) und durch die echten Tests ersetzt.
+
+**Was NICHT verifiziert wurde — und warum:** Ein End-to-End-Aufruf mit deinen echten Paper-Keys, der wirklich Kursdaten zurückbekommt. Grund: Claude Codes Tool-Sandbox in dieser Session kann die echten Secret-Werte aus `.env` strukturell nicht lesen — weder `Read`, noch `Bash`/`source`, noch ein Python-Skript, das die Datei direkt öffnet, sehen mehr als leere Werte für `ALPACA_API_KEY`/`ALPACA_SECRET_KEY`, obwohl die Datei im Editor sichtbar echte Werte enthält. Das ist offensichtlich eine bewusste Schutzmaßnahme gegen Secret-Exfiltration, keine CRLF-Eigenart (gegengeprüft). **Konsequenz:** `backend/scripts/verify_alpaca_connection.py` wurde geschrieben, muss aber vom Nutzer selbst in einem Terminal außerhalb von Claude Code ausgeführt werden — dort sind die echten Werte sichtbar. Ergebnis dieses Laufs (Erfolg/Fehler, Anzahl Bars) bitte zurückmelden, damit dieser Punkt hier als wirklich verifiziert markiert werden kann.
+
 ## Was noch offen ist
 
-1. **Echte Alpaca/Polygon-Anbindung.** Kann in dieser Sandbox nicht verifiziert werden (Netzwerksperre + keine Keys). Nächster Schritt: entweder du testest `AlpacaProvider`/`PolygonProvider` lokal mit echten Keys, oder wir hinterlegen sie als GitHub-Actions-Secrets für einen künftigen Probe-Job (nach demselben Muster wie der Nautilus-Trader-Check in Phase 2) — dafür wäre vorher zu klären, ob du das möchtest, da damit reale Zugangsdaten ins Spiel kommen.
+1. ~~Echte Alpaca/Polygon-Anbindung.~~ **Alpaca-Teil implementiert (s. Nachtrag oben), End-to-End-Lauf mit echten Daten steht noch aus.** Polygon bleibt Stub — laut DECISIONS.md #4 ohnehin nur "optional später".
 2. **Historische Indexmitgliedschaft (echte Daten).** `PointInTimeUniverse` ist nur der Mechanismus. Es gibt noch keine echten historischen S&P-500-Mitgliedschaftsdaten — das ist typischerweise ein kostenpflichtiger Datensatz und eine Beschaffungsaufgabe, keine Programmieraufgabe. Nicht mit einer plausibel aussehenden, aber erfundenen Fixture vorgetäuscht.
 3. **Keine Halbtags-Handelstage.** NYSE veröffentlicht verkürzte Handelstage (z. B. Tag vor dem 4. Juli) pro Kalenderjahr, nicht nach fester Regel — eine handgepflegte Tabelle würde unbemerkt veralten. Bewusst nicht geraten, sondern als Lücke benannt.
 4. **Corporate Actions decken nur Splits ab.** Dividenden werden in `ROADMAP.md` Abschnitt 7 als "ggf." (optional) geführt — noch nicht gebaut, kein aktueller Bedarf in Phase 4/5.

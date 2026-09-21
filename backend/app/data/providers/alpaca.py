@@ -1,38 +1,121 @@
-"""Alpaca market data adapter — documented stub, NOT verified.
+"""Alpaca market data adapter — real implementation against the Alpaca
+Market Data API v2 (`GET /v2/stocks/{symbol}/bars` on `data.alpaca.markets`).
 
-This sandbox has no network access to api.alpaca.markets (403,
-x-deny-reason: host_not_allowed — the same organizational network policy
-that blocks PyPI, see PHASE2_NOTES.md), and no API key is configured
-(DECISIONS.md marks Alpaca as a provisional, not yet individually
-confirmed choice). Writing a plausible-looking HTTP client from memory
-here — exact endpoint paths, parameter names, pagination, rate-limit
-handling — would create false confidence rather than a verified
-integration; those details are easy to get subtly wrong with no way to
-check them in this environment. This class documents the intended shape
-and deliberately raises NotImplementedError until it has actually been
-exercised against the real API, either locally or via a CI job holding a
-real credential (as a secret, never committed).
+Verification status (see PHASE3_NOTES.md "Alpaca-Anbindung" section for the
+full story): this was written and unit-tested against a mocked HTTP
+transport (`tests/test_providers.py`), and the request construction was
+confirmed to actually reach Alpaca's real server (verified via `curl` from
+this environment — the response carried Alpaca's own CORS headers, e.g.
+`Access-Control-Allow-Headers: Apca-Api-Key-Id, Apca-Api-Secret-Key`). It has
+**not** been verified end-to-end with real bar data, because this Claude
+Code session's tools cannot read the actual secret values out of `.env` (a
+sourced `ALPACA_API_KEY` came back empty length even though the file has
+real content — the sandbox structurally withholds secret-shaped file
+content from the model, not just from tool output). Run
+`backend/scripts/verify_alpaca_connection.py` yourself, in a terminal
+outside Claude Code's tool sandbox, to do that last verification step with
+your real paper-trading keys.
+
+Notes on the API contract this relies on:
+- Market data lives on `data.alpaca.markets`, which is a *different* host
+  than the trading/account API (`ALPACA_BASE_URL`, default
+  `paper-api.alpaca.markets`, from `.env`) — the market-data host is the
+  same for paper and live keys, there is no separate "paper" data endpoint.
+- `timeframe` is passed straight through as Alpaca's own string format
+  (e.g. "1Min", "5Min", "1Hour", "1Day") — this matches what
+  `MarketDataProvider.get_bars` already documents as "provider-specific",
+  so no translation layer is needed.
+- Free/basic Alpaca accounts only get the IEX feed (not the consolidated
+  SIP tape) — `feed="iex"` is the default here for that reason, and is
+  configurable for accounts with a paid data plan.
+- Results are paginated via `next_page_token`; this loops until Alpaca
+  stops returning one.
 """
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
+
+import httpx
 
 from app.data.point_in_time import Bar
 from app.data.providers.base import MarketDataProvider
 
-_NOT_VERIFIED = (
-    "AlpacaProvider is a documented stub, not a verified implementation — "
-    "see PHASE3_NOTES.md. Needs a real API key/secret, network access to "
-    "api.alpaca.markets (blocked in the dev sandbox), and a first "
-    "verification run before this can be trusted to return real data."
-)
+DATA_BASE_URL = "https://data.alpaca.markets"
+_BARS_PATH = "/v2/stocks/{symbol}/bars"
+_MAX_LIMIT_PER_PAGE = 10_000
 
 
 class AlpacaProvider(MarketDataProvider):
-    def __init__(self, api_key: str, api_secret: str):
+    def __init__(
+        self,
+        api_key: str,
+        api_secret: str,
+        feed: str = "iex",
+        timeout: float = 10.0,
+        client: httpx.Client | None = None,
+    ):
+        if not api_key or not api_secret:
+            raise ValueError("AlpacaProvider requires a non-empty api_key and api_secret")
         self._api_key = api_key
         self._api_secret = api_secret
+        self._feed = feed
+        self._timeout = timeout
+        self._client = client
 
     def get_bars(self, symbol: str, start: date, end: date, timeframe: str) -> list[Bar]:
-        raise NotImplementedError(_NOT_VERIFIED)
+        url = f"{DATA_BASE_URL}{_BARS_PATH.format(symbol=symbol)}"
+        headers = {
+            "APCA-API-KEY-ID": self._api_key,
+            "APCA-API-SECRET-KEY": self._api_secret,
+        }
+        params = {
+            "timeframe": timeframe,
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "limit": _MAX_LIMIT_PER_PAGE,
+            "adjustment": "raw",
+            "feed": self._feed,
+        }
+
+        bars: list[Bar] = []
+        page_token: str | None = None
+        client = self._client or httpx.Client(timeout=self._timeout)
+        owns_client = self._client is None
+        try:
+            while True:
+                request_params = dict(params)
+                if page_token:
+                    request_params["page_token"] = page_token
+                response = client.get(url, headers=headers, params=request_params)
+                if response.status_code == 401:
+                    raise PermissionError(
+                        "Alpaca rejected the API key/secret (401 Unauthorized). Check "
+                        "ALPACA_API_KEY/ALPACA_SECRET_KEY in .env - these must be the "
+                        "paper-trading keys from the Alpaca dashboard, not live-trading keys."
+                    )
+                response.raise_for_status()
+                payload = response.json()
+                for raw_bar in payload.get("bars") or []:
+                    bars.append(_parse_bar(symbol, raw_bar))
+                page_token = payload.get("next_page_token")
+                if not page_token:
+                    break
+        finally:
+            if owns_client:
+                client.close()
+
+        bars.sort(key=lambda b: b.timestamp)
+        return bars
+
+
+def _parse_bar(symbol: str, raw: dict) -> Bar:
+    return Bar(
+        symbol=symbol,
+        timestamp=datetime.fromisoformat(raw["t"].replace("Z", "+00:00")),
+        open=raw["o"],
+        high=raw["h"],
+        low=raw["l"],
+        close=raw["c"],
+        volume=raw["v"],
+    )

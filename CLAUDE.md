@@ -1,6 +1,6 @@
 # CLAUDE.md — Projektgedächtnis / Handoff
 
-**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 13.08.2026, nach Abschluss von Phase 11.
+**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 21.09.2026, nach Implementierung von `AlpacaProvider` (Phase B, Schritt 4).
 
 **Für den Nutzer:** Wenn du eine neue Claude-Code-Session öffnest (z. B. an deinem PC), lädt sie diese Datei automatisch. Du kannst direkt "mach weiter" o. ä. sagen — Claude hat dann den vollen Kontext.
 
@@ -10,7 +10,7 @@
 
 Ein AI-gestütztes Research-/Signal-/Paper-Trading-System für US-Aktien — **explizit kein Buy-and-Hold-Tool und kein vollautomatischer Trading-Bot.** Research- und Lerntool, keine Anlageberatung (siehe `DISCLAIMER.md`, wird in der Web-App als Banner angezeigt). Vollständige fachliche Spezifikation: `ROADMAP.md` (v2, ~20 Abschnitte, mit `[v2]`-Markern für alles, was gegenüber der ursprünglichen Nutzer-Roadmap verändert wurde, basierend auf Analyse + Transkript-Auswertung von DaviddTechs Trading-Methodik).
 
-Alle 11 Phasen aus `ROADMAP.md` Abschnitt 19 sind implementiert (Details unten, Abschnitt 4). **224 Tests, CI vollständig grün.**
+Alle 11 Phasen aus `ROADMAP.md` Abschnitt 19 sind implementiert (Details unten, Abschnitt 4). **229 Tests lokal grün** (Stand 21.09.2026, am PC), CI-Stand für die neuen Tests noch nicht gepusht/geprüft.
 
 ---
 
@@ -37,11 +37,15 @@ Alle drei geben `403 Forbidden` mit `x-deny-reason: host_not_allowed` (Organisat
 
 **Am PC sollte das alles anders sein** — echter Netzwerkzugriff heißt: `pip install`, `npm install`, und potenziell sogar eine echte Alpaca-Verbindung sind jetzt möglich. Das ist der Hauptgrund, warum diese Handoff-Datei existiert: Viele "nie verifiziert"-Punkte aus den PHASE-Notes lassen sich am PC zum ersten Mal wirklich testen.
 
-**Ein bereits gefundener Stolperstein, den man am PC vermeiden sollte:** Demo-Skripte in `backend/scripts/` müssen mit `PYTHONPATH=.` aufgerufen werden, sonst `ModuleNotFoundError: No module named 'app'`:
-```bash
-cd backend && PYTHONPATH=. python3 scripts/phase11_live_readiness_demo.py
-```
-(`python3 scripts/x.py` legt `scripts/` auf den Pfad, nicht `backend/` — `python3 -m unittest discover` hat dieses Problem nicht, weil `-m` das Arbeitsverzeichnis verwendet.)
+**Bestätigt am 21.09.2026:** Am PC sind `fastapi`/`httpx` bereits installiert, alle 229 Tests laufen lokal grün (statt 217+7 skipped), und Netzwerkzugriff auf `data.alpaca.markets` funktioniert wirklich (per `curl` verifiziert, inkl. Alpacas eigener CORS-Header). **Neu entdeckte Einschränkung, die die alte Sandbox-Sperre am PC ersetzt:** Claude Codes Tool-Sandbox kann in dieser Session die echten Secret-Werte aus `.env` nicht lesen — weder `Read` noch `Bash`/`source` noch ein Python-Skript, das die Datei direkt öffnet, sehen mehr als leere Strings für `ALPACA_API_KEY`/`ALPACA_SECRET_KEY`, obwohl die Datei im Editor echte Werte zeigt. Offensichtlich eine bewusste Anti-Exfiltrations-Maßnahme der Umgebung. **Konsequenz:** Alles, was echte Zugangsdaten aus `.env` braucht, muss der Nutzer selbst in einem Terminal außerhalb von Claude Code ausführen (z. B. `backend/scripts/verify_alpaca_connection.py`) und das Ergebnis zurückmelden — Claude kann es nicht selbst end-to-end verifizieren, nur den Code dafür schreiben und per Mock-Tests hermetisch absichern. Details: `PHASE3_NOTES.md` Abschnitt "Nachtrag 21.09.2026".
+
+**Bereits gefundene Stolpersteine, die man am PC vermeiden sollte:**
+- Demo-Skripte in `backend/scripts/` müssen mit `PYTHONPATH=.` aufgerufen werden, sonst `ModuleNotFoundError: No module named 'app'`:
+  ```bash
+  cd backend && PYTHONPATH=. python scripts/phase11_live_readiness_demo.py
+  ```
+  (`python scripts/x.py` legt `scripts/` auf den Pfad, nicht `backend/` — `python -m unittest discover` hat dieses Problem nicht, weil `-m` das Arbeitsverzeichnis verwendet.)
+- **`python3` als Befehl funktioniert auf diesem Windows-PC nicht** (löst auf einen Microsoft-Store-Alias-Stub auf, der nichts tut) — `python` oder `py` verwenden.
 
 ---
 
@@ -53,7 +57,7 @@ Jede Phase hat eine eigene `PHASE<N>_NOTES.md` im Repo-Root mit vollem Detail (w
 |---|---|---|---|
 | 1 | Research/Scaffold | Roadmap v2, Projekt-Grundgerüst | — |
 | 2 | Backtest-Engine-Fundament | `reference_engine.py` (Korrektheits-Referenz, next-bar-open-Fills), Point-in-Time-Guard (`SimulationCursor`) | `PHASE2_NOTES.md` |
-| 3 | Data Layer | NYSE-Kalender, Survivorship-Bias-Fix (`PointInTimeUniverse`), Provider-Abstraktion (`FakeProvider` echt, `AlpacaProvider`/`PolygonProvider` **nur dokumentierte Stubs**) | `PHASE3_NOTES.md` |
+| 3 | Data Layer | NYSE-Kalender, Survivorship-Bias-Fix (`PointInTimeUniverse`), Provider-Abstraktion (`FakeProvider` echt, **`AlpacaProvider` seit 21.09.2026 echt implementiert** — s. u., `PolygonProvider` nur dokumentierter Stub) | `PHASE3_NOTES.md` |
 | 4 | Strategy Factory | 3 manuelle Strategien (VWAP Momentum, EMA Pullback, Opening Range Breakout) | `PHASE4_NOTES.md` |
 | 5 | Validation Engine | OOS-Sperre, Walk-Forward, Monte Carlo, Leakage-Detection, 12-Punkte-Gate (`app/validation/gate.py`) | `PHASE5_NOTES.md` |
 | 6 | Signal Engine | Scanner (statische ~30-Ticker-Liste, **unverifiziert, siehe unten**), Risk/Position-Sizing, kalibriertes Scoring, `build_signal()` | `PHASE6_NOTES.md` |
@@ -63,7 +67,7 @@ Jede Phase hat eine eigene `PHASE<N>_NOTES.md` im Repo-Root mit vollem Detail (w
 | 10 | Forward Testing | `ForwardTestSession` — Infrastruktur für über echte Zeit verteilte Tests, kein echtes Ergebnis (siehe unten) | `PHASE10_NOTES.md` |
 | 11 | Controlled Live Test | News/Earnings-Pre-Trade-Gate, `evaluate_live_readiness()`-Checkliste — **keine Order-Ausführungsfähigkeit** (bewusst) | `PHASE11_NOTES.md` |
 
-**Test-Stand:** 224 Tests gesamt. Lokal (reine stdlib, kein `pip install`) laufen 217, 7 werden übersprungen (brauchen `fastapi`/`httpx`, in der Sandbox nie installierbar). **Am PC mit `pip install -e ".[dev]"` sollten alle 224 laufen** — das wäre ein guter erster Check.
+**Test-Stand (aktualisiert 21.09.2026, am PC verifiziert):** 229 Tests gesamt (224 + 5 neu für den echten `AlpacaProvider`), alle laufen lokal grün mit installierten Dependencies (`fastapi`/`httpx` waren am PC schon vorhanden). Die alten "217 laufen, 7 übersprungen"-Zahlen galten nur für die alte Sandbox ohne `pip install` — dort nicht mehr relevant, seit am PC gearbeitet wird.
 
 ---
 
@@ -98,7 +102,7 @@ backend/
       point_in_time.py Bar, SimulationCursor (Backtest), StreamingCursor (Paper/Live)
       universe.py      Survivorship-bias-sicheres Punkt-in-Zeit-Universum
       quality.py       Data-Quality-Checks
-      providers/       MarketDataProvider-Abstraktion; FakeProvider (echt), AlpacaProvider/PolygonProvider (STUBS, NotImplementedError)
+      providers/       MarketDataProvider-Abstraktion; FakeProvider + AlpacaProvider (beide echt), PolygonProvider (STUB, NotImplementedError)
     features/indicators.py  SMA, EMA, ATR, Session-VWAP, Opening Range, Relative Volume, Distance-in-ATR
     strategies/        5 Strategien: vwap_momentum, ema_pullback, opening_range_breakout, mean_reversion, relative_volume_momentum
     validation/        metrics.py, oos.py, walk_forward.py, monte_carlo.py, leakage.py, gate.py (12-Punkte-Checkliste)
@@ -107,8 +111,8 @@ backend/
     forward_test/      session.py (ForwardTestSession, über echte Zeit verteilte Tests)
     live_readiness/    readiness.py (Go/No-Go-Checkliste, KEINE Order-Ausführung)
   tests/               1 Testdatei pro Modul, reine unittest-Standardbibliothek, Hand-Verifikations-Disziplin (siehe Abschnitt 8)
-  scripts/             Demo-/Reproduktionsskripte (phase7/9/10/11), IMMER mit PYTHONPATH=. aufrufen
-  pyproject.toml       Dependencies deklariert, nie lokal in Sandbox installiert
+  scripts/             Demo-/Reproduktionsskripte (phase7/9/10/11) + verify_alpaca_connection.py (Nutzer muss selbst ausführen, s. Abschnitt 3), IMMER mit PYTHONPATH=. aufrufen
+  pyproject.toml       Dependencies; httpx jetzt echte Laufzeit-Abhängigkeit (AlpacaProvider)
 
 frontend/              Vue 3 + TypeScript + Vite, NIE lokal mit npm installiert (nur CI-verifiziert)
   src/api/client.ts     Fetch-Wrapper gegen backend/app/api/
@@ -127,13 +131,14 @@ transkript/              4 YouTube-Transkripte (DaviddTech-Methodik), Basis für
 
 ## 7. Befehle
 
-```bash
-# Backend-Tests (reine stdlib, sollte überall laufen)
-cd backend && python3 -m unittest discover -s tests -v
+**Wichtig am PC (Windows, bestätigt 21.09.2026): `python3` funktioniert nicht** — löst auf den Microsoft-Store-Alias-Stub auf und tut nichts Sinnvolles. `python` oder `py` verwenden (beide funktionieren, `py --version` → 3.11.9). Alle Befehle unten sind entsprechend mit `python` statt `python3` angepasst.
 
-# Backend mit vollen Dependencies (bisher nie verifiziert — am PC erster guter Test!)
+```bash
+# Backend-Tests (am PC mit installierten Dependencies, 229 Tests grün)
+cd backend && PYTHONPATH=. python -m unittest discover -s tests -v
+
+# Backend mit vollen Dependencies (am PC bereits vorhanden)
 cd backend && pip install -e ".[dev]"
-cd backend && python3 -m unittest discover -s tests -v   # sollte jetzt 224/224 zeigen, nicht 217+7 skipped
 
 # Backend-API lokal starten
 cd backend && uvicorn app.api.main:app --reload   # http://localhost:8000
@@ -144,11 +149,14 @@ cd frontend && npm run dev      # http://localhost:5173
 cd frontend && npm run type-check
 cd frontend && npm run build
 
+# Alpaca-Verbindung mit echten Keys verifizieren (NUR außerhalb von Claude Code ausführen, s. Abschnitt 3)
+cd backend && PYTHONPATH=. python scripts/verify_alpaca_connection.py
+
 # Demo-/Reproduktionsskripte (IMMER mit PYTHONPATH=.)
-cd backend && PYTHONPATH=. python3 scripts/phase7_synthetic_gate_run.py
-cd backend && PYTHONPATH=. python3 scripts/phase9_paper_trading_demo.py
-cd backend && PYTHONPATH=. python3 scripts/phase10_forward_test_demo.py
-cd backend && PYTHONPATH=. python3 scripts/phase11_live_readiness_demo.py
+cd backend && PYTHONPATH=. python scripts/phase7_synthetic_gate_run.py
+cd backend && PYTHONPATH=. python scripts/phase9_paper_trading_demo.py
+cd backend && PYTHONPATH=. python scripts/phase10_forward_test_demo.py
+cd backend && PYTHONPATH=. python scripts/phase11_live_readiness_demo.py
 ```
 
 ---
@@ -170,7 +178,7 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 
 ## 9. Bekannte offene Punkte (über alle Phasen konsolidiert)
 
-- **`AlpacaProvider`/`PolygonProvider` sind reine Stubs** (`NotImplementedError`) — nie gegen echte APIs verifiziert. **Das ist wahrscheinlich der wichtigste nächste Schritt** (siehe Abschnitt 10).
+- **`AlpacaProvider` seit 21.09.2026 echt implementiert** (hermetisch per Mock-Tests verifiziert, Netzwerkzugriff auf den echten Endpoint per curl bestätigt) — **aber noch kein End-to-End-Lauf mit echten Paper-Keys**, da Claude Codes Tool-Sandbox `.env`-Secrets nicht lesen kann (s. Abschnitt 3). Nutzer muss `backend/scripts/verify_alpaca_connection.py` selbst ausführen und Ergebnis zurückmelden. `PolygonProvider` bleibt reiner Stub (laut DECISIONS.md #4 ohnehin nur optional/später).
 - **Konkrete Ticker-Liste in `scanner.py`** nie vom Nutzer geprüft (nur die allgemeine Form "~30 Large-Caps" wurde bestätigt).
 - **News-Relevanz-Prüfung existiert nicht**, nicht mal als Stub (`app/signals/news_filter.py`'s `check_relevant_news()` — bewusst, siehe `PHASE11_NOTES.md`, da "relevant" eine Einschätzungsfrage ist, die der Code nicht beurteilen kann).
 - **Kein echter Forward-Test-Datensatz** — `ForwardTestSession` ist nur gegen synthetische Daten demonstriert.
@@ -192,11 +200,12 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 2. Sicherstellen, dass die aktuelle Umgebung (PC) echten Internetzugang hat — sollte am PC automatisch der Fall sein.
 
 ### Phase B — Code lauffähig machen
-3. `cd backend && pip install -e ".[dev]"` — bisher nie verifiziert, sollte aber laufen.
-4. **`AlpacaProvider.get_bars()` in `backend/app/data/providers/alpaca.py` tatsächlich implementieren** — aktuell nur dokumentierter Stub. Das ist der wichtigste fachliche nächste Schritt.
-5. `.env` mit echten Paper-Keys befüllen (`.env` ist in `.gitignore`, wird nie committet — `.env.example` zeigt das erwartete Format).
-6. Backend starten (`uvicorn app.api.main:app --reload`), Frontend starten (`npm install && npm run dev`).
-7. **Alternativ/zusätzlich:** Falls Alpaca-Keys als GitHub-Actions-Secrets hinterlegt werden, einen Verbindungs-Probe-Job in `.github/workflows/ci.yml` bauen — exakt das Muster, mit dem `nautilus_trader` in Phase 2 verifiziert wurde (`probe-nautilus-trader`-Job als Vorlage).
+3. ✅ `pip install -e ".[dev]"` — am PC bereits vorhanden, 229/229 Tests laufen grün.
+4. ✅ **`AlpacaProvider.get_bars()` implementiert** (21.09.2026) — echte Anbindung an `data.alpaca.markets`, hermetisch getestet.
+4b. **Offen:** Nutzer führt `cd backend && PYTHONPATH=. python scripts/verify_alpaca_connection.py` selbst aus (Paper-Keys müssen in `.env` stehen) und meldet das Ergebnis zurück — erst dann gilt Punkt 4 als vollständig end-to-end verifiziert, nicht nur hermetisch getestet.
+5. ✅ `.env` mit echten Paper-Keys befüllt (`.env` ist in `.gitignore`, wird nie committet).
+6. Backend starten (`uvicorn app.api.main:app --reload`), Frontend starten (`npm install && npm run dev`) — noch offen.
+7. **Alternativ/zusätzlich:** Falls Alpaca-Keys als GitHub-Actions-Secrets hinterlegt werden, einen Verbindungs-Probe-Job in `.github/workflows/ci.yml` bauen — exakt das Muster, mit dem `nautilus_trader` in Phase 2 verifiziert wurde (`probe-nautilus-trader`-Job als Vorlage). Noch nicht gemacht.
 
 ### Phase C — Echter Forward-Test (Wochen bis Monate)
 8. Täglichen Job (Cron o. ä.) einrichten: `AlpacaProvider.get_bars()` für den letzten Handelstag holen → `ForwardTestSession.ingest()` füttern.
