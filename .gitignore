@@ -24,6 +24,7 @@ dist/
 !**/fixtures/**/*.csv
 data/raw/
 data/cache/
+backend/data_cache/
 
 # OS / Editor
 .DS_Store
