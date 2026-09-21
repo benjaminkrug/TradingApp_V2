@@ -2,19 +2,16 @@
 Market Data API v2 (`GET /v2/stocks/{symbol}/bars` on `data.alpaca.markets`).
 
 Verification status (see PHASE3_NOTES.md "Alpaca-Anbindung" section for the
-full story): this was written and unit-tested against a mocked HTTP
-transport (`tests/test_providers.py`), and the request construction was
-confirmed to actually reach Alpaca's real server (verified via `curl` from
-this environment — the response carried Alpaca's own CORS headers, e.g.
-`Access-Control-Allow-Headers: Apca-Api-Key-Id, Apca-Api-Secret-Key`). It has
-**not** been verified end-to-end with real bar data, because this Claude
-Code session's tools cannot read the actual secret values out of `.env` (a
-sourced `ALPACA_API_KEY` came back empty length even though the file has
-real content — the sandbox structurally withholds secret-shaped file
-content from the model, not just from tool output). Run
-`backend/scripts/verify_alpaca_connection.py` yourself, in a terminal
-outside Claude Code's tool sandbox, to do that last verification step with
-your real paper-trading keys.
+full story): unit-tested against a mocked HTTP transport
+(`tests/test_providers.py`), confirmed to reach Alpaca's real server via
+`curl`, and verified end-to-end with real bar data twice - once by the user
+running `backend/scripts/verify_alpaca_connection.py` themselves, once by
+Claude running `backend/scripts/real_data_gate_run.py` directly (11,459 real
+5-Min AAPL bars). Note for future sessions: there is no sandbox restriction
+that prevents reading real `.env` values once the file is actually saved to
+disk - an earlier note here claiming otherwise was wrong (see PHASE3_NOTES.md
+for the correction). Treat real credentials with the same care you would
+outside this tool, since nothing technical stops a real API call here.
 
 Notes on the API contract this relies on:
 - Market data lives on `data.alpaca.markets`, which is a *different* host

@@ -1,12 +1,12 @@
 """One-time, real-network check that AlpacaProvider.get_bars() actually
 works against your Alpaca paper-trading keys.
 
-Why this has to be run by you, not by Claude in a chat session: Claude
-Code's tool sandbox structurally cannot read real secret values out of
-`.env` (a sourced ALPACA_API_KEY came back empty even though the file has
-real content) - see PHASE3_NOTES.md "Alpaca-Anbindung". This script must be
-run in your own terminal, outside Claude Code's tools, so it can actually
-see your real keys.
+This was originally written believing Claude Code's tool sandbox couldn't
+read real secret values out of `.env` - that turned out to be wrong (the
+file was just unsaved in the editor at the time; see PHASE3_NOTES.md's
+correction). Claude can in fact run this directly. It's kept here anyway
+so you have your own independent way to check the connection without going
+through Claude at all.
 
 Usage:
 

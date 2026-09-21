@@ -1,6 +1,6 @@
 # CLAUDE.md — Projektgedächtnis / Handoff
 
-**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 21.09.2026, nach Abschluss von Phase B (Alpaca-Anbindung implementiert + verifiziert, Backend/Frontend lokal lauffähig).
+**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 21.09.2026, nach Abschluss von Phase B und erstem Echte-Daten-Validierungslauf (siehe `REAL_DATA_VALIDATION_NOTES.md`).
 
 **Für den Nutzer:** Wenn du eine neue Claude-Code-Session öffnest (z. B. an deinem PC), lädt sie diese Datei automatisch. Du kannst direkt "mach weiter" o. ä. sagen — Claude hat dann den vollen Kontext.
 
@@ -37,7 +37,9 @@ Alle drei geben `403 Forbidden` mit `x-deny-reason: host_not_allowed` (Organisat
 
 **Am PC sollte das alles anders sein** — echter Netzwerkzugriff heißt: `pip install`, `npm install`, und potenziell sogar eine echte Alpaca-Verbindung sind jetzt möglich. Das ist der Hauptgrund, warum diese Handoff-Datei existiert: Viele "nie verifiziert"-Punkte aus den PHASE-Notes lassen sich am PC zum ersten Mal wirklich testen.
 
-**Bestätigt am 21.09.2026:** Am PC sind `fastapi`/`httpx` bereits installiert, alle 229 Tests laufen lokal grün (statt 217+7 skipped), und Netzwerkzugriff auf `data.alpaca.markets` funktioniert wirklich (per `curl` verifiziert, inkl. Alpacas eigener CORS-Header). **Neu entdeckte Einschränkung, die die alte Sandbox-Sperre am PC ersetzt:** Claude Codes Tool-Sandbox kann in dieser Session die echten Secret-Werte aus `.env` nicht lesen — weder `Read` noch `Bash`/`source` noch ein Python-Skript, das die Datei direkt öffnet, sehen mehr als leere Strings für `ALPACA_API_KEY`/`ALPACA_SECRET_KEY`, obwohl die Datei im Editor echte Werte zeigt. Offensichtlich eine bewusste Anti-Exfiltrations-Maßnahme der Umgebung. **Konsequenz:** Alles, was echte Zugangsdaten aus `.env` braucht, muss der Nutzer selbst in einem Terminal außerhalb von Claude Code ausführen (z. B. `backend/scripts/verify_alpaca_connection.py`) und das Ergebnis zurückmelden — Claude kann es nicht selbst end-to-end verifizieren, nur den Code dafür schreiben und per Mock-Tests hermetisch absichern. Details: `PHASE3_NOTES.md` Abschnitt "Nachtrag 21.09.2026".
+**Bestätigt am 21.09.2026:** Am PC sind `fastapi`/`httpx` bereits installiert, alle 229 Tests laufen lokal grün (statt 217+7 skipped), und Netzwerkzugriff auf `data.alpaca.markets` funktioniert wirklich (per `curl` verifiziert, inkl. Alpacas eigener CORS-Header).
+
+**Korrigierter Punkt (ursprünglich falsch dokumentiert):** Kurzzeitig sah es so aus, als könnte Claude Codes Tool-Sandbox die echten Secret-Werte aus `.env` nicht lesen (leere Strings bei `Read`/`Bash`). **Das stimmt nicht** — die Datei war zu dem Zeitpunkt im Editor nur noch ungespeichert (ohne Inhalt auf der Festplatte), keine Sandbox-Sperre. Sobald gespeichert, kann Claude `.env`-Secrets ganz normal lesen und für echte API-Calls verwenden. **Wichtige Konsequenz für künftige Sessions:** Es gibt keine technische Bremse, die Claude daran hindert, mit echten Zugangsdaten aus `.env` echte (auch kostenpflichtige oder folgenreiche) API-Calls zu machen — das muss durch bewusstes Verhalten sichergestellt werden, nicht durch die Umgebung. Bei echten Broker-/API-Keys: vor einem tatsächlichen Call kurz überlegen, ob er wirklich gewollt ist, nicht einfach weil er technisch möglich ist. Details zur Korrektur: `PHASE3_NOTES.md`.
 
 **Bereits gefundene Stolpersteine, die man am PC vermeiden sollte:**
 - Demo-Skripte in `backend/scripts/` müssen mit `PYTHONPATH=.` aufgerufen werden, sonst `ModuleNotFoundError: No module named 'app'`:
@@ -124,6 +126,7 @@ ROADMAP.md              Volle fachliche Spezifikation (Pflichtlektüre bei Unsic
 DECISIONS.md            Siehe Abschnitt 5
 DISCLAIMER.md           Research-/Paper-Trading-Disclaimer, im Frontend sichtbar
 PHASE2_NOTES.md … PHASE11_NOTES.md   Ein Dokument pro Phase, volles Detail
+REAL_DATA_VALIDATION_NOTES.md   Erster Gate-Lauf der Phase-4-Strategien gegen echte Alpaca-Daten (21.09.2026) — EMA Pullback & Opening Range Breakout bestehen alle automatisierbaren Checks, VWAP Momentum fällt durch
 transkript/              4 YouTube-Transkripte (DaviddTech-Methodik), Basis für ROADMAP v2
 ```
 
@@ -191,6 +194,8 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 - ~~`package-lock.json` fehlt~~ **Behoben 21.09.2026** — erster lokaler `npm install` hat ihn erzeugt, committet, CI nutzt jetzt `npm ci` statt `npm install`.
 - **Web-App (Dashboard/Signals/Trades-API) nutzt weiterhin synthetische Demo-Daten**, nicht die jetzt echte `AlpacaProvider`-Anbindung — `/api/dashboard` meldet das ehrlich selbst (`"data_source":"synthetic_demo"`). Umstellung auf echte Daten ist noch offen (Teil von Phase C, siehe Abschnitt 10).
 - **Kein Pull Request erstellt**, Branch liegt direkt auf GitHub ohne Merge nach `main`.
+- **Nur EMA Pullback und Opening Range Breakout haben das Gate auf echten Daten bestanden** (VWAP Momentum fiel durch, s. `REAL_DATA_VALIDATION_NOTES.md`) — bisher nur 1 Symbol (AAPL), 1 Zeitraum (~6,5 Monate). Kein Beleg für andere Symbole/Zeiträume.
+- **Monte-Carlo-Drawdown-Schwelle ist eine offene Geschäftsentscheidung** (wie DECISIONS.md #5/#6) — bisher bewusst nicht gesetzt, Punkt bleibt `NOT_AUTOMATED`.
 
 ---
 
@@ -206,18 +211,27 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 5. ✅ `.env` mit echten Paper-Keys befüllt (`.env` ist in `.gitignore`, wird nie committet).
 6. ✅ **Backend + Frontend lokal gestartet und verifiziert** (21.09.2026): `uvicorn app.api.main:app` auf Port 8000 (`/docs`, `/api/health`, `/api/dashboard` antworten), `npm run dev` auf Port 5173 (Type-Check fehlerfrei, im Browser vom Nutzer bestätigt: lädt fehlerfrei). CORS zwischen den beiden funktioniert (Backend erlaubt exakt `http://localhost:5173` — beim Start auf `127.0.0.1` statt `localhost` binden würde CORS brechen, das ist beim ersten Versuch passiert und wurde korrigiert). Nebenbei erster `npm install` überhaupt → `package-lock.json` erzeugt, committet, CI auf `npm ci` umgestellt.
 7. **Alternativ/zusätzlich:** Falls Alpaca-Keys als GitHub-Actions-Secrets hinterlegt werden, einen Verbindungs-Probe-Job in `.github/workflows/ci.yml` bauen — exakt das Muster, mit dem `nautilus_trader` in Phase 2 verifiziert wurde (`probe-nautilus-trader`-Job als Vorlage). Noch nicht gemacht, nicht dringend, da Alpaca-Anbindung bereits lokal verifiziert ist.
-**Damit ist Phase B fachlich abgeschlossen.** Offen bleibt nur noch: Web-App von synthetischen Demo-Daten auf die echte `AlpacaProvider`-Anbindung umstellen — das ist Schritt 8 unten, der Übergang zu Phase C.
+**Damit ist Phase B fachlich abgeschlossen.**
+
+### Phase B.5 — Echte-Daten-Validierung (eingeschoben 21.09.2026, VOR Forward-Test)
+
+Grund: Keine Strategie hatte je das 12-Punkte-Gate auf echten Daten durchlaufen, nur auf synthetischen Zufallsdaten (Phase 5/6/7). Ein Forward-Test bestätigt laut Roadmap ein bereits bestandenes OOS-Ergebnis — es gab noch keins auf echten Daten zu bestätigen. Details, Tabelle, Einschränkungen: `REAL_DATA_VALIDATION_NOTES.md`.
+
+8. ✅ **Erster Gate-Lauf mit echten Alpaca-Daten** (`backend/scripts/real_data_gate_run.py`, AAPL, 05.03.–21.09.2026, 11.459 Bars): VWAP Momentum FAIL (Walk-Forward instabil), **EMA Pullback und Opening Range Breakout PASS** (alle automatisierbaren Gate-Punkte). Monte-Carlo-Schwelle bewusst offen gelassen (Geschäftsentscheidung, s. u.).
+9. **Offen:** Weitere Symbole/Zeiträume gegen EMA Pullback und Opening Range Breakout testen (`PYTHONPATH=. python scripts/real_data_gate_run.py SYMBOL`), bevor eine der beiden als Forward-Test-Kandidat gilt — ein Symbol/ein Zeitraum ist eine erste Stichprobe, kein Beweis.
+10. **Geschäftsentscheidung offen:** Monte-Carlo-Drawdown-Schwelle (wie viel maximaler Drawdown ist akzeptabel?) — bisher nicht mit dem Nutzer geklärt, kein DECISIONS.md-Eintrag.
 
 ### Phase C — Echter Forward-Test (Wochen bis Monate)
-8. Täglichen Job (Cron o. ä.) einrichten: `AlpacaProvider.get_bars()` für den letzten Handelstag holen → `ForwardTestSession.ingest()` füttern.
-9. Regelmäßig `session.status()` prüfen, bis `ready_for_review=True` (ROADMAP-Kriterium: ≥20 Trades **oder** ~3 Monate).
-10. `compare_to_oos()` (in `app/forward_test/session.py`) gegen die dokumentierten OOS-Ergebnisse der jeweiligen Strategie laufen lassen.
+11. Eine validierte Strategie (EMA Pullback oder Opening Range Breakout, nach Schritt 9) für den Forward-Test auswählen.
+12. Täglichen Job (Cron o. ä.) einrichten: `AlpacaProvider.get_bars()` für den letzten Handelstag holen → `ForwardTestSession.ingest()` füttern.
+13. Regelmäßig `session.status()` prüfen, bis `ready_for_review=True` (ROADMAP-Kriterium: ≥20 Trades **oder** ~3 Monate).
+14. `compare_to_oos()` (in `app/forward_test/session.py`) gegen die dokumentierten OOS-Ergebnisse der jeweiligen Strategie laufen lassen.
 
 ### Phase D — Vor echtem Kapitaleinsatz
-11. **DECISIONS.md #6 final mit dem Nutzer bestätigen** (aktuell nur Default: Cash-Konto, 750 USD).
-12. `evaluate_live_readiness()` (in `app/live_readiness/readiness.py`) laufen lassen — muss `passed=True` zeigen. `broker_connectivity_verified` und `human_sign_off` bleiben *immer* `NOT_AUTOMATED`, das ist Absicht.
-13. Broker-Konnektivität mit einer echten Test-Order in Alpacas Paper-Umgebung selbst verifizieren.
-14. **Bewusste, separate Entscheidung mit dem Nutzer:** ob/wie echtes Kapital eingesetzt wird. Braucht eine eigene, explizite Order-Ausführungs-Architektur, die absichtlich noch nicht existiert — nicht ungefragt bauen.
+15. **DECISIONS.md #6 final mit dem Nutzer bestätigen** (aktuell nur Default: Cash-Konto, 750 USD).
+16. `evaluate_live_readiness()` (in `app/live_readiness/readiness.py`) laufen lassen — muss `passed=True` zeigen. `broker_connectivity_verified` und `human_sign_off` bleiben *immer* `NOT_AUTOMATED`, das ist Absicht.
+17. Broker-Konnektivität mit einer echten Test-Order in Alpacas Paper-Umgebung selbst verifizieren.
+18. **Bewusste, separate Entscheidung mit dem Nutzer:** ob/wie echtes Kapital eingesetzt wird. Braucht eine eigene, explizite Order-Ausführungs-Architektur, die absichtlich noch nicht existiert — nicht ungefragt bauen.
 
 ---
 
