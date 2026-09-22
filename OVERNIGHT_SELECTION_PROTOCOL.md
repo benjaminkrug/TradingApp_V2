@@ -53,6 +53,28 @@ Für jeden Handelstag N, mit Daten, die an Tag N tatsächlich schon bekannt sind
 
 **01.01.2021 – heute (~5,7 Jahre).** Bewusst lang genug gewählt, um mehrere Marktphasen zu enthalten (2022 Bärenmarkt, 2023–2025 Erholung/Rally) — im Gegensatz zum vorherigen ~6,5-Monats-Fenster, das nur eine einzige Phase abdeckte und K6 damit gar nicht prüfbar machte.
 
+## Nachtrag 22.09.2026 — Ergebnis auf bereinigten Daten
+
+503 S&P-500-Symbole, 2021-01-01 bis heute, split-bereinigt, Phantom-Bars und >30-%-Ausreißer gefiltert (s. Änderungsprotokoll). Handrechnung an einem realen Trade (CHTR, 15.06.2022, 4,17× Normalvolumen, ausgewählt, -286 bp Übernacht-Verlust) bestätigt die Mechanik.
+
+| Kriterium | Top 20 | Top 5 |
+|---|---|---|
+| K3 (netto bei 2 bp) | +4,26 bp — **PASS** | +1,89 bp — PASS, aber fragil (Break-even < 4 bp) |
+| K4 (Tagesblock-Bootstrap) | t = +2,00, p = 0,047 — **PASS** (knapp) | t = +0,65 — FAIL |
+| K5 (Stichprobe) | 28.280 Trades — **PASS** | 7.070 Trades — PASS |
+| K6 (Marktphasen) | +2,86 / +3,92 / +6,02 bp, alle positiv — **PASS** (erstmals überhaupt in diesem Projekt) | -5,91 / +7,67 / +3,98 bp — FAIL |
+| K-neu (Auswahl vs. Zufall) | p = 0,0001, 0/10.000 Zufallsziehungen schlagen die echte Auswahl — **PASS** | p = 0,31 — FAIL |
+
+**Top 20 besteht zum ersten Mal in der gesamten bisherigen Untersuchung alle Kriterien gleichzeitig.**
+
+**Warum das trotzdem nicht als klarer Erfolg gilt, sondern als vielversprechender Zwischenstand:**
+
+1. **K4 ist ein Grenzfall, kein klares Bestehen.** t = 2,00 bei einer Schwelle von 2,00 — über sieben verschiedene Bootstrap-Startwerte stabil zwischen 1,99 und 2,05 (also kein Zufallsartefakt des Bootstraps selbst), aber knapp. Das ist ein echtes, aber schwaches Signal.
+2. **Mehrfachtestung über die gesamte Sitzung, nicht nur diese zwei Konfigurationen.** Insgesamt wurden in dieser Untersuchung 27 (intraday, `VALIDATION_PROTOCOL.md`) + 2 (hier) = 29 Konfigurationen geprüft. Eine einfache, konservative Bonferroni-Korrektur verlangt bei 29 Tests p < 0,05/29 ≈ 0,0017 für ein wirklich robustes Ergebnis. **K4s p = 0,047 besteht diese strengere Schwelle nicht.** Der Auswahltest (K-neu, p = 0,0001) besteht sie dagegen deutlich — das Auswahlprinzip selbst (Volumen-Ranking schlägt Zufallsauswahl) ist der robustere Fund, die absolute Renditehöhe (K4) der schwächere.
+3. **K8 (Survivorship Bias) bleibt ungelöst — der wichtigste verbleibende Vorbehalt.** Das Universum ist die heutige S&P-500-Liste, rückwirkend auf 2021 angewendet. Unternehmen, die in der Zwischenzeit aus dem Index geflogen, übernommen worden oder insolvent gegangen sind, fehlen komplett. Ohne echte Punkt-in-Zeit-Daten ist jedes Ergebnis vorläufig — das war vorher schon bekannt, wiegt jetzt aber schwerer, weil zum ersten Mal ein Ergebnis vorliegt, das diese Prüfung auch verdient.
+
+**Was trotzdem echt vielversprechend ist:** K6 (Konsistenz über Marktphasen, inkl. Bärenmarkt 2022) bestand zum ersten Mal überhaupt — das war mit dem alten ~6,5-Monats-Fenster nie prüfbar. Und der Auswahltest ist robust signifikant, nicht knapp. Das stützt die ursprüngliche These (Auswahl nach Volumen schlägt Zufall) deutlich stärker als die absolute Renditehöhe.
+
 ## Was dieses Protokoll ausdrücklich nicht löst
 
 - Survivorship Bias (K8) bleibt ungelöst, jedes Ergebnis ist vorläufig.
