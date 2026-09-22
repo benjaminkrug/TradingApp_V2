@@ -29,6 +29,10 @@ Die Ticker→Firmenname-Zuordnung (`sp500_constituents.csv`, Community-Quelle) e
 
 **Begründung für diese Auswahl statt Zufallsstichprobe:** Häufig ausgewählte Aktien liefern mehr Datenpunkte pro Firma für den Vergleichstest — mehr statistische Kraft pro investierter API-Anfrage. Bewusster Kompromiss, offen benannt: Diese Aktien sind nicht repräsentativ fürs ganze Universum, sie sind einfach die, die am öftesten hohes Volumen hatten. Ein Effekt, der nur bei diesen 24 Aktien gefunden wird, ist nicht automatisch auf alle 503 übertragbar.
 
+## Zeitraum des Piloten
+
+**Die letzten 2 Jahre (23.09.2024–22.09.2026), nicht die vollen 5,7 Jahre.** Bewusste Abkürzung für einen ersten, schnellen Test: ~8 statt ~23 Drei-Monats-Abfragen pro Firma, bei 24 Firmen ~192 statt ~552 Anfragen. **Konsequenz, offen benannt:** Dieser Zeitraum enthält nicht den Bärenmarkt von 2022 — K6 (Konsistenz über Marktphasen) ist mit diesem verkürzten Fenster nicht sinnvoll prüfbar, nur K3/K4 und der eigentliche Stimmungs-Vergleich. Bei einem vielversprechenden Ergebnis wird der Zeitraum auf die vollen 5,7 Jahre ausgeweitet, nicht vorher.
+
 ## Methodik (spiegelt die bereits verifizierte Volumen-Logik)
 
 1. **Relative Stimmung statt absoluter Schwelle:** Tageswert des "Tone" einer Firma geteilt durch/verglichen mit ihrem eigenen gleitenden Durchschnitt der vorangegangenen 20 Handelstage — exakt dasselbe Muster wie `relative_volume_by_day`, nur mit Ton statt Volumen. Kein absoluter "Ton > 0"-Schnitt, weil Presseberichterstattung im Schnitt oft leicht negativ eingefärbt ist (Nachrichtenwert), nicht neutral bei 0.
