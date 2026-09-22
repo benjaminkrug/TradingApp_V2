@@ -43,6 +43,26 @@ class TestRelativeVolumeByDay(unittest.TestCase):
         # not contaminated by its own spike or day 4's normal volume.
         self.assertAlmostEqual(rv[DAY0 + timedelta(days=3)], 100_000 / 100)
 
+    def test_zero_volume_day_is_never_ranked_and_dropped_from_the_baseline(self):
+        """Reproduces the real TPL case: a phantom (volume=0) day must not
+        itself be selectable, and must not drag the rolling baseline down
+        for the days around it."""
+        bars = [
+            daily_bar("X", 0, close=10.0, volume=100),
+            daily_bar("X", 1, close=10.0, volume=100),
+            daily_bar("X", 2, close=10.0, volume=100),
+            daily_bar("X", 3, close=259.44, volume=0, open_=259.44),  # phantom, like real TPL
+            daily_bar("X", 4, close=10.0, volume=200),
+        ]
+        rv = relative_volume_by_day(DailyBars("X", bars), lookback=3)
+
+        day3 = bars[3].timestamp.date()
+        day4 = bars[4].timestamp.date()
+        self.assertIsNone(rv[day3])  # the phantom day itself is never rankable
+        # day4's baseline uses days 1-3, but day3 is phantom and dropped ->
+        # baseline is mean(days 1,2) = 100, not contaminated by the phantom's 0
+        self.assertAlmostEqual(rv[day4], 200 / 100)
+
 
 class TestSelectTopByRelativeVolume(unittest.TestCase):
     def test_ranks_and_truncates_to_top_n(self):
@@ -82,6 +102,37 @@ class TestOvernightReturnsByDay(unittest.TestCase):
         # entry close=100 (day0) -> exit open=102 (day1): (102-100)/100 * 10000 = 200 bp
         self.assertAlmostEqual(returns[DAY0]["X"], 200.0)
         self.assertNotIn(DAY0 + timedelta(days=1), returns)  # no day 2 to exit into
+
+    def test_skips_transitions_touching_a_zero_volume_phantom_bar(self):
+        """Reproduces the real TPL case: a stale open==close, volume=0 bar
+        must not generate a fake overnight return on either side of it."""
+        bars = [
+            daily_bar("X", 0, close=150.0, volume=100),
+            daily_bar("X", 1, close=259.44, volume=0, open_=259.44),  # phantom
+            daily_bar("X", 2, close=149.0, volume=100, open_=149.5),
+        ]
+        returns = overnight_returns_by_day({"X": DailyBars("X", bars)})
+        self.assertNotIn(DAY0, returns)  # day0 -> phantom day1: skipped
+        self.assertNotIn(DAY0 + timedelta(days=1), returns)  # phantom day1 -> day2: skipped
+
+    def test_skips_transitions_above_the_magnitude_cap(self):
+        """Reproduces the HON/DD case: a huge same-side-real-volume move
+        (e.g. a spin-off) is excluded by the magnitude filter even though
+        neither bar is a zero-volume phantom."""
+        bars = [
+            daily_bar("X", 0, close=460.0, volume=200_000),
+            daily_bar("X", 1, close=230.0, volume=350_000, open_=240.0),  # ~-48% gap
+        ]
+        returns = overnight_returns_by_day({"X": DailyBars("X", bars)}, max_plausible_bp=3_000.0)
+        self.assertNotIn(DAY0, returns)
+
+    def test_magnitude_cap_can_be_disabled(self):
+        bars = [
+            daily_bar("X", 0, close=460.0, volume=200_000),
+            daily_bar("X", 1, close=230.0, volume=350_000, open_=240.0),
+        ]
+        returns = overnight_returns_by_day({"X": DailyBars("X", bars)}, max_plausible_bp=None)
+        self.assertIn(DAY0, returns)
 
 
 class TestSelectionVsRandomPermutation(unittest.TestCase):

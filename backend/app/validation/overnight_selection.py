@@ -26,6 +26,34 @@ from typing import Optional, Sequence
 
 from app.data.point_in_time import Bar
 
+# Found scanning the real S&P 500 cache (22.09.2026, see OVERNIGHT_SELECTION_
+# PROTOCOL.md's change log): a handful of symbols have phantom daily bars
+# where open == close and volume == 0 - a stale placeholder quote for a day
+# the feed had no real trade data, not a real price (TPL showed three of
+# these in May 2023, each one creating a fake ~70% round-trip). Any bar with
+# zero volume is treated as "no real data that day" everywhere in this
+# module: excluded from relative-volume baselines (it would otherwise drag
+# a rolling average toward zero) and never used as an overnight trade's
+# entry or exit.
+_MIN_REAL_VOLUME = 1
+
+# A second, independent safety net for moves real filtering above cannot
+# catch: single-day price changes far too large to be genuine tradeable
+# overnight moves for a liquid stock - in practice, corporate actions
+# (spin-offs, primarily) that Alpaca's split-adjustment does not cover,
+# since a spin-off is not a split. HON and DD both show >45% single-day
+# moves on real, large volume in this dataset, consistent with their 2025/26
+# corporate breakups. Excluding them is a conscious, conservative trade-off:
+# it also throws out any genuine, very large news-driven overnight move
+# (extremely rare for S&P 500 constituents, but not impossible) rather than
+# trying to distinguish the two without real corporate-actions data - the
+# same K8 gap noted throughout this protocol.
+MAX_PLAUSIBLE_OVERNIGHT_BP = 3_000.0  # 30%
+
+
+def _has_real_volume(bar: Bar) -> bool:
+    return bar.volume >= _MIN_REAL_VOLUME
+
 
 @dataclass(frozen=True)
 class DailyBars:
@@ -41,14 +69,23 @@ def relative_volume_by_day(daily: DailyBars, lookback: int) -> dict[date, Option
     """Day N's volume divided by the mean volume of the `lookback` days
     strictly before it. `None` where there isn't enough prior history -
     never computed using day N or later, which is what keeps the daily
-    ranking free of look-ahead."""
+    ranking free of look-ahead.
+
+    A zero-volume day (`_has_real_volume`) is treated as "not real data":
+    it can never itself be ranked (there was no real trade to rank), and it
+    is dropped from the baseline window rather than dragging the average
+    toward zero and inflating every other day's ratio.
+    """
     bars = daily.bars
     result: dict[date, Optional[float]] = {}
     for i, bar in enumerate(bars):
-        if i < lookback:
+        if i < lookback or not _has_real_volume(bar):
             result[bar.timestamp.date()] = None
             continue
-        prior = bars[i - lookback : i]
+        prior = [b for b in bars[i - lookback : i] if _has_real_volume(b)]
+        if not prior:
+            result[bar.timestamp.date()] = None
+            continue
         baseline = statistics.fmean(b.volume for b in prior)
         result[bar.timestamp.date()] = (bar.volume / baseline) if baseline > 0 else None
     return result
@@ -115,17 +152,29 @@ def eligible_symbols_by_day(
     return out
 
 
-def overnight_returns_by_day(daily_bars_by_symbol: dict[str, DailyBars]) -> dict[date, dict[str, float]]:
+def overnight_returns_by_day(
+    daily_bars_by_symbol: dict[str, DailyBars], max_plausible_bp: Optional[float] = MAX_PLAUSIBLE_OVERNIGHT_BP
+) -> dict[date, dict[str, float]]:
     """Close of day N -> open of day N+1, in basis points, keyed by day N
-    (the day the position would be entered)."""
+    (the day the position would be entered).
+
+    A transition is skipped entirely (not clipped) if either bar has zero
+    volume (phantom data, see module docstring) or if the move exceeds
+    `max_plausible_bp` in magnitude (likely an uncaptured corporate action,
+    e.g. a spin-off - see MAX_PLAUSIBLE_OVERNIGHT_BP). Pass `None` to
+    disable the magnitude filter, e.g. for a test that wants to see the raw
+    number.
+    """
     out: dict[date, dict[str, float]] = {}
     for sym, daily in daily_bars_by_symbol.items():
         bars = daily.bars
         for i in range(len(bars) - 1):
             entry_bar, exit_bar = bars[i], bars[i + 1]
-            if entry_bar.close <= 0:
+            if entry_bar.close <= 0 or not _has_real_volume(entry_bar) or not _has_real_volume(exit_bar):
                 continue
             bp = (exit_bar.open - entry_bar.close) / entry_bar.close * 10_000
+            if max_plausible_bp is not None and abs(bp) > max_plausible_bp:
+                continue
             out.setdefault(entry_bar.timestamp.date(), {})[sym] = bp
     return out
 
