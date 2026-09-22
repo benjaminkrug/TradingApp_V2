@@ -1,6 +1,6 @@
 # CLAUDE.md — Projektgedächtnis / Handoff
 
-**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 21.09.2026, nach Reparatur des Messapparats und vollständigem Gate-Durchlauf (siehe `VALIDATION_PROTOCOL.md` und `REAL_DATA_VALIDATION_NOTES.md`).
+**Zweck dieser Datei:** Du (Claude) liest diese Datei automatisch beim Start jeder neuen Session in diesem Repo. Sie fasst den kompletten Stand zusammen, damit eine neue Session (z. B. am PC des Nutzers, mit echtem Netzwerkzugriff) sofort weiterarbeiten kann, ohne den gesamten bisherigen Chatverlauf zu kennen. Zuletzt aktualisiert: 22.09.2026, nach erstem Kandidaten, der alle Kriterien besteht — Übernacht-Auswahlstrategie, Top 20 (siehe `OVERNIGHT_SELECTION_PROTOCOL.md`), mit wichtigen Einschränkungen (K8 ungelöst, K4 nur knapp).
 
 **Für den Nutzer:** Wenn du eine neue Claude-Code-Session öffnest (z. B. an deinem PC), lädt sie diese Datei automatisch. Du kannst direkt "mach weiter" o. ä. sagen — Claude hat dann den vollen Kontext.
 
@@ -17,7 +17,7 @@ Alle 11 Phasen aus `ROADMAP.md` Abschnitt 19 sind implementiert (Details unten, 
 ## 2. Git-Stand
 
 - **Branch:** `claude/ai-trading-app-roadmap-w0nrm2`
-- **Letzter Commit:** `a957795` (vollständiges Gate nach VALIDATION_PROTOCOL.md)
+- **Letzter Commit:** `4c9d536` (Übernacht-Auswahlstrategie: erster Kandidat, der alle Kriterien besteht)
 - **Remote:** `https://github.com/benjaminkrug/TradingApp_V2`
 - Lokaler Stand und `origin/claude/ai-trading-app-roadmap-w0nrm2` sind deckungsgleich (Stand 21.09.2026).
 - **Noch kein Pull Request erstellt** — der Branch liegt direkt auf GitHub, aber wurde nie in `main` gemerged. Das ist eine offene Entscheidung: PR erstellen? In `main` mergen? Bisher nicht gefragt/entschieden.
@@ -69,7 +69,7 @@ Jede Phase hat eine eigene `PHASE<N>_NOTES.md` im Repo-Root mit vollem Detail (w
 | 10 | Forward Testing | `ForwardTestSession` — Infrastruktur für über echte Zeit verteilte Tests, kein echtes Ergebnis (siehe unten) | `PHASE10_NOTES.md` |
 | 11 | Controlled Live Test | News/Earnings-Pre-Trade-Gate, `evaluate_live_readiness()`-Checkliste — **keine Order-Ausführungsfähigkeit** (bewusst) | `PHASE11_NOTES.md` |
 
-**Test-Stand (aktualisiert 21.09.2026, am PC verifiziert):** 270 Tests, alle grün. Zuwachs gegenüber den ursprünglichen 224: echter `AlpacaProvider`, Ergebnisspeicher, Bewertung über die echten Handelsregeln, Stop-Horizont-Aggregation und die Kriterien K3–K7. Die alten "217 laufen, 7 übersprungen"-Zahlen galten nur für die alte Sandbox ohne `pip install`.
+**Test-Stand (aktualisiert 22.09.2026, am PC verifiziert):** 285 Tests, alle grün. Zuwachs gegenüber den ursprünglichen 224: echter `AlpacaProvider` (inkl. `adjustment`-Parameter-Fix), Ergebnisspeicher, Bewertung über die echten Handelsregeln, Stop-Horizont-Aggregation, die Kriterien K3–K7, und die Übernacht-Auswahlstrategie (`overnight_selection.py`). Die alten "217 laufen, 7 übersprungen"-Zahlen galten nur für die alte Sandbox ohne `pip install`.
 
 ---
 
@@ -126,8 +126,10 @@ ROADMAP.md              Volle fachliche Spezifikation (Pflichtlektüre bei Unsic
 DECISIONS.md            Siehe Abschnitt 5
 DISCLAIMER.md           Research-/Paper-Trading-Disclaimer, im Frontend sichtbar
 PHASE2_NOTES.md … PHASE11_NOTES.md   Ein Dokument pro Phase, volles Detail
-VALIDATION_PROTOCOL.md          Vorregistriertes Prüfprotokoll (K1-K7). Vor jedem Lauf geschrieben, Git-Zeitstempel als Beleg. Pflichtlektüre vor jeder Änderung an der Validierung.
-REAL_DATA_VALIDATION_NOTES.md   Alle Gate-Läufe gegen echte Alpaca-Daten (21.09.2026) — 0 von 27 Konfigurationen bestehen; K7 zeigt fehlende Timing-Information
+VALIDATION_PROTOCOL.md          Vorregistriertes Prüfprotokoll (K1-K7) für Intraday-Strategien. Git-Zeitstempel als Beleg. Pflichtlektüre vor jeder Änderung an der Validierung.
+REAL_DATA_VALIDATION_NOTES.md   Alle Intraday-Gate-Läufe (21.09.2026) — 0 von 27 Konfigurationen bestehen; K7 zeigt fehlende Timing-Information
+SELECTION_LAYER_PROTOCOL.md     Vorregistriertes Protokoll für die (noch nicht getestete) intraday "Stocks in Play"-Auswahlschicht — braucht Databento/Security-Master, siehe dort für die Kostenfrage
+OVERNIGHT_SELECTION_PROTOCOL.md Vorregistriertes + Ergebnis-Nachtrag für die Übernacht-Auswahlstrategie (22.09.2026) — Top-20-Konfiguration besteht erstmals alle Kriterien, aber K4 nur knapp (t=2,00) und K8 (Survivorship Bias) ungelöst
 transkript/              4 YouTube-Transkripte (DaviddTech-Methodik), Basis für ROADMAP v2
 ```
 
@@ -195,7 +197,9 @@ Diese Konventionen haben sich über alle 11 Phasen bewährt und sollten fortgese
 - ~~`package-lock.json` fehlt~~ **Behoben 21.09.2026** — erster lokaler `npm install` hat ihn erzeugt, committet, CI nutzt jetzt `npm ci` statt `npm install`.
 - **Web-App (Dashboard/Signals/Trades-API) nutzt weiterhin synthetische Demo-Daten**, nicht die jetzt echte `AlpacaProvider`-Anbindung — `/api/dashboard` meldet das ehrlich selbst (`"data_source":"synthetic_demo"`). Umstellung auf echte Daten ist noch offen (Teil von Phase C, siehe Abschnitt 10).
 - **Kein Pull Request erstellt**, Branch liegt direkt auf GitHub ohne Merge nach `main`.
-- **Keine der 3 Phase-4-Strategien besteht das vollständige Gate — 0 von 27 Konfigurationen** (3 Strategien × 3 Symbole × 3 Stop-Horizonte, s. `REAL_DATA_VALIDATION_NOTES.md`). Entscheidend ist das *Warum*: Der Permutationstest (K7) ergibt einen p-Median von 0,799 — zufälliges Einstiegs-Timing schlägt unsere Strategien typischerweise in ~80 % der Ziehungen. Das Timing trägt keine Information. **Mehr Daten für diese Strategien zu kaufen wäre daher voraussichtlich verschwendet.**
+- **Keine der 3 Phase-4-Intraday-Strategien besteht das vollständige Gate — 0 von 27 Konfigurationen** (3 Strategien × 3 Symbole × 3 Stop-Horizonte, s. `REAL_DATA_VALIDATION_NOTES.md`). Entscheidend ist das *Warum*: Der Permutationstest (K7) ergibt einen p-Median von 0,799 — zufälliges Einstiegs-Timing schlägt unsere Strategien typischerweise in ~80 % der Ziehungen. Das Timing trägt keine Information. **Mehr Daten für diese Strategien zu kaufen wäre daher voraussichtlich verschwendet.**
+- **Neu, 22.09.2026: Übernacht-Auswahlstrategie (Top 20 nach Tagesvolumen, Halten Schluss→nächste Eröffnung) besteht als erste überhaupt alle Kriterien** — s. `OVERNIGHT_SELECTION_PROTOCOL.md`. Zwei wichtige Einschränkungen: K4 (Signifikanz) ist nur knapp (t=2,00 bei Schwelle 2,0, über 7 Bootstrap-Seeds stabil bei 1,99–2,05, aber unter einer konservativen Mehrfachtest-Korrektur über alle 29 in dieser Session geprüften Konfigurationen nicht mehr robust). K8 (Survivorship Bias) bleibt ungelöst — heutige S&P-500-Liste rückwirkend auf 2021 angewendet, fehlende Titel (delisted/übernommen) nicht berücksichtigt. Der Auswahltest selbst (Volumen schlägt Zufallsauswahl, p=0,0001) ist dagegen robust signifikant. **Nächster sinnvoller Schritt: K8 lösen (Databento Security Master, 199 USD/Monat — siehe `SELECTION_LAYER_PROTOCOL.md` für die Kostendiskussion) oder weitere Robustheitsprüfung, bevor an Forward-Test/echtes Kapital überhaupt zu denken ist.**
+- **Zwei echte Datenfehler bei `AlpacaProvider` gefunden und behoben (21./22.09.2026):** (1) `adjustment="raw"` ließ Aktiensplits als künstliche ~90-%-Kurseinbrüche erscheinen (NVDA, GOOGL, AMZN u. a.) — jetzt konfigurierbar, `"split"` für mehrjährige Backtests verwenden. (2) Vereinzelte Phantom-Tagesbars mit Volumen 0 und identischem Platzhalterkurs (gefunden bei TPL) — werden jetzt in `overnight_selection.py` gefiltert. Beide Fixes gelten bisher nur für die Übernacht-Auswahlstrategie, **nicht rückwirkend auf andere Skripte angewendet** — bei künftigen mehrjährigen/breiten Backtests daran denken.
 - **Monte-Carlo-Drawdown-Schwelle ist eine offene Geschäftsentscheidung** (wie DECISIONS.md #5/#6) — bisher bewusst nicht gesetzt, Punkt bleibt `NOT_AUTOMATED`.
 
 ---
