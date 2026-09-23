@@ -1,4 +1,5 @@
-"""GDELT DOC 2.0 API client — NEWS_SENTIMENT_PILOT_PROTOCOL.md.
+"""GDELT DOC 2.0 API client — NEWS_SENTIMENT_PILOT_PROTOCOL.md and
+NEWS_VOLUME_PILOT_PROTOCOL.md.
 
 Free, no API key, but with two real constraints confirmed against the
 live API on 22.09.2026 (not just from documentation):
@@ -13,6 +14,13 @@ live API on 22.09.2026 (not just from documentation):
 Queries use an exact-phrase company name (e.g. `"Apple Inc"`), which
 reduces but does not eliminate false matches from ambiguous names - see
 the protocol's data-quality section.
+
+Two timeline modes are used, both confirmed (22./23.09.2026) to return
+the identical `{"timeline": [{"series": ..., "data": [{"date", "value"}]}]}`
+shape - only the `series` label and the meaning of `value` differ:
+`timelinetone` (average sentiment, `ToneDay`/`fetch_tone_timeline`) and
+`timelinevol` (share of all monitored articles mentioning the company
+that day, `VolumeDay`/`fetch_volume_timeline`).
 """
 
 from __future__ import annotations
@@ -35,6 +43,12 @@ _USER_AGENT = "TradingApp_V2-research-pilot/1.0"
 class ToneDay:
     day: date
     tone: float
+
+
+@dataclass(frozen=True)
+class VolumeDay:
+    day: date
+    volume: float
 
 
 def _chunk_date_range(start: date, end: date, max_span_days: int = _MAX_QUERY_SPAN_DAYS) -> list[tuple[date, date]]:
@@ -88,12 +102,29 @@ def fetch_tone_timeline(
     needed. `pace_seconds` is a courtesy delay between chunk requests on
     top of the retry backoff in `_get_with_backoff`.
     """
-    results: list[ToneDay] = []
+    points = _fetch_timeline_points(company_name, "timelinetone", start, end, sleep_fn, pace_seconds)
+    return [ToneDay(day=d, tone=v) for d, v in points]
+
+
+def fetch_volume_timeline(
+    company_name: str, start: date, end: date, sleep_fn=time.sleep, pace_seconds: float = 12.0
+) -> list[VolumeDay]:
+    """Daily article-volume share for `company_name` - same chunking/pacing
+    as `fetch_tone_timeline`, different GDELT mode (see module docstring).
+    """
+    points = _fetch_timeline_points(company_name, "timelinevol", start, end, sleep_fn, pace_seconds)
+    return [VolumeDay(day=d, volume=v) for d, v in points]
+
+
+def _fetch_timeline_points(
+    company_name: str, mode: str, start: date, end: date, sleep_fn, pace_seconds: float
+) -> list[tuple[date, float]]:
+    results: list[tuple[date, float]] = []
     chunks = _chunk_date_range(start, end)
     for i, (chunk_start, chunk_end) in enumerate(chunks):
         params = {
             "query": f'"{company_name}"',
-            "mode": "timelinetone",
+            "mode": mode,
             "startdatetime": chunk_start.strftime("%Y%m%d000000"),
             "enddatetime": chunk_end.strftime("%Y%m%d000000"),
             "format": "json",
@@ -101,13 +132,13 @@ def fetch_tone_timeline(
         url = f"{_BASE_URL}?{urllib.parse.urlencode(params)}"
         body = _get_with_backoff(url, sleep_fn=sleep_fn)
         if body:
-            results.extend(_parse_timeline(body))
+            results.extend(_parse_raw_points(body))
         if i < len(chunks) - 1:
             sleep_fn(pace_seconds)
     return results
 
 
-def _parse_timeline(body: str) -> list[ToneDay]:
+def _parse_raw_points(body: str) -> list[tuple[date, float]]:
     try:
         payload = json.loads(body)
     except json.JSONDecodeError:
@@ -120,7 +151,15 @@ def _parse_timeline(body: str) -> list[ToneDay]:
     for point in series:
         try:
             day = date.fromisoformat(point["date"][:10])
-            out.append(ToneDay(day=day, tone=float(point["value"])))
+            out.append((day, float(point["value"])))
         except (KeyError, ValueError):
             continue
     return out
+
+
+def _parse_timeline(body: str) -> list[ToneDay]:
+    return [ToneDay(day=d, tone=v) for d, v in _parse_raw_points(body)]
+
+
+def _parse_volume_timeline(body: str) -> list[VolumeDay]:
+    return [VolumeDay(day=d, volume=v) for d, v in _parse_raw_points(body)]

@@ -5,10 +5,13 @@ from datetime import date, timedelta
 
 from app.data.providers.gdelt import (
     ToneDay,
+    VolumeDay,
     _chunk_date_range,
     _get_with_backoff,
     _parse_timeline,
+    _parse_volume_timeline,
     fetch_tone_timeline,
+    fetch_volume_timeline,
 )
 
 
@@ -71,6 +74,31 @@ class TestParseTimeline(unittest.TestCase):
         ]}]})
         result = _parse_timeline(body)
         self.assertEqual(result, [ToneDay(day=date(2022, 6, 1), tone=1.0)])
+
+
+class TestParseVolumeTimeline(unittest.TestCase):
+    def test_matches_hand_constructed_response(self):
+        """Real response shape confirmed live against the GDELT API on
+        23.09.2026 for mode=timelinevol - identical structure to
+        timelinetone, only the series label ("Volume Intensity") and the
+        meaning of `value` (article-share, not tone) differ."""
+        body = json.dumps({
+            "timeline": [{
+                "series": "Volume Intensity",
+                "data": [
+                    {"date": "20260601T000000Z", "value": 0.01},
+                    {"date": "20260602T000000Z", "value": 0.0049},
+                ],
+            }]
+        })
+        result = _parse_volume_timeline(body)
+        self.assertEqual(result, [
+            VolumeDay(day=date(2026, 6, 1), volume=0.01),
+            VolumeDay(day=date(2026, 6, 2), volume=0.0049),
+        ])
+
+    def test_empty_timeline(self):
+        self.assertEqual(_parse_volume_timeline(json.dumps({"timeline": []})), [])
 
 
 class TestGetWithBackoff(unittest.TestCase):
@@ -262,6 +290,34 @@ class TestFetchToneTimeline(unittest.TestCase):
         self.assertEqual([r.tone for r in result], [1.0, 2.0, 3.0])
         # 3 chunks -> 2 pacing sleeps between them, not 3
         self.assertEqual(sleeps, [1.0, 1.0])
+
+
+class TestFetchVolumeTimeline(unittest.TestCase):
+    def test_uses_timelinevol_mode_and_returns_volume_days(self):
+        """Same chunking/pacing machinery as fetch_tone_timeline (already
+        covered above) - this only checks the two things specific to the
+        volume path: the URL asks for mode=timelinevol, not timelinetone,
+        and results come back as VolumeDay, not ToneDay."""
+        seen_urls: list[str] = []
+
+        def fake_get(url, sleep_fn=None):
+            seen_urls.append(url)
+            return json.dumps({"timeline": [{"data": [{"date": "20260601T000000Z", "value": 0.02}]}]})
+
+        import app.data.providers.gdelt as gdelt_module
+
+        original = gdelt_module._get_with_backoff
+        gdelt_module._get_with_backoff = fake_get
+        try:
+            result = fetch_volume_timeline(
+                "Test Co", date(2026, 6, 1), date(2026, 6, 5), sleep_fn=lambda s: None
+            )
+        finally:
+            gdelt_module._get_with_backoff = original
+
+        self.assertEqual(result, [VolumeDay(day=date(2026, 6, 1), volume=0.02)])
+        self.assertEqual(len(seen_urls), 1)
+        self.assertIn("mode=timelinevol", seen_urls[0])
 
 
 if __name__ == "__main__":
