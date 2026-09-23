@@ -1,12 +1,23 @@
+import importlib.util
 import unittest
 from datetime import date, datetime, timedelta, timezone
 
-import httpx
-
 from app.data.point_in_time import Bar
-from app.data.providers.alpaca import DATA_BASE_URL, AlpacaProvider
 from app.data.providers.fake import FakeProvider
 from app.data.providers.polygon import PolygonProvider
+
+# AlpacaProvider (app/data/providers/alpaca.py) has httpx as a real runtime
+# dependency, which the bare-pytest `backend-tests` CI job intentionally
+# does not install (.github/workflows/ci.yml) - same situation as
+# fastapi/httpx for the API layer, see test_api.py's identical guard. Kept
+# as a top-of-file check rather than importing httpx directly so a missing
+# httpx doesn't blow up collection for TestFakeProvider/TestUnverifiedProviderStubs
+# below, which don't need it.
+_HAS_HTTPX = importlib.util.find_spec("httpx") is not None
+if _HAS_HTTPX:
+    import httpx
+
+    from app.data.providers.alpaca import DATA_BASE_URL, AlpacaProvider
 
 
 def make_bars(n: int, symbol: str) -> list[Bar]:
@@ -63,6 +74,7 @@ def make_transport(handler):
     return httpx.MockTransport(handler)
 
 
+@unittest.skipUnless(_HAS_HTTPX, "httpx not installed in this environment")
 class TestAlpacaProvider(unittest.TestCase):
     """No real network access here on purpose - httpx.MockTransport lets us
     hand-verify exact request construction (URL/headers/params) and response
