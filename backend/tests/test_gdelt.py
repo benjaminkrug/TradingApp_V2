@@ -168,6 +168,61 @@ class TestGetWithBackoff(unittest.TestCase):
         finally:
             gdelt_module.urllib.request.urlopen = original
 
+    def test_connection_timeout_retries_then_succeeds(self):
+        """A plain URLError (e.g. a TCP connect timeout) is not an
+        HTTPError - it must be retried like a 429, not left to propagate
+        and abort the whole run. Regression test for the real DELL/NVR
+        failures on 22-23.09.2026 (WinError 10060, connection timeout)."""
+        attempts = {"n": 0}
+        waits: list[float] = []
+
+        def fake_urlopen(req, timeout):
+            attempts["n"] += 1
+            if attempts["n"] < 3:
+                raise urllib.error.URLError("connection attempt failed")
+
+            class Resp:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *a):
+                    return False
+
+                def read(self):
+                    return b"ok-after-timeout-retries"
+
+            return Resp()
+
+        import app.data.providers.gdelt as gdelt_module
+
+        original = gdelt_module.urllib.request.urlopen
+        gdelt_module.urllib.request.urlopen = fake_urlopen
+        try:
+            result = _get_with_backoff(
+                "http://example.test", base_wait=10.0, sleep_fn=lambda s: waits.append(s)
+            )
+        finally:
+            gdelt_module.urllib.request.urlopen = original
+
+        self.assertEqual(result, "ok-after-timeout-retries")
+        self.assertEqual(attempts["n"], 3)
+        self.assertEqual(waits, [10.0, 20.0])
+
+    def test_connection_timeout_gives_up_after_max_attempts_returns_none(self):
+        def fake_urlopen(req, timeout):
+            raise urllib.error.URLError("connection attempt failed")
+
+        import app.data.providers.gdelt as gdelt_module
+
+        original = gdelt_module.urllib.request.urlopen
+        gdelt_module.urllib.request.urlopen = fake_urlopen
+        try:
+            result = _get_with_backoff("http://example.test", max_attempts=3, sleep_fn=lambda s: None)
+        finally:
+            gdelt_module.urllib.request.urlopen = original
+
+        self.assertIsNone(result)
+
 
 class TestFetchToneTimeline(unittest.TestCase):
     def test_stitches_multiple_chunks_and_paces_between_them(self):

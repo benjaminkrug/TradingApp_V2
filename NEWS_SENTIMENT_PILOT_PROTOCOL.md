@@ -47,8 +47,28 @@ Die Ticker→Firmenname-Zuordnung (`sp500_constituents.csv`, Community-Quelle) e
 - Kein Beweis, selbst bei Bestehen — GDELTs Namens-basierte Texterkennung ist unpräziser als eine echte Ticker-Sentiment-API (siehe Kostenvergleich in der vorherigen Recherche). Ein positives Ergebnis wäre ein Grund, in eine sauberere (kostenpflichtige) Quelle zu investieren — nicht der Beweis selbst.
 - Nur 24 von 503 Aktien getestet — kein Anspruch auf Verallgemeinerung ohne weitere Ausweitung.
 
+## Nachtrag 23.09.2026 — Ergebnis
+
+Alle 24 Pilot-Symbole vollständig geladen (24/24 GDELT-Dateien). 138 Tage mit ≥2 Pilot-Symbolen in der Top-20-Auswahl und Stimmungsdaten an diesem Tag.
+
+| Gruppe | n | Brutto | Netto @ 2 bp | Bootstrap t | p-Wert |
+|---|---|---|---|---|---|
+| Obere Hälfte (positivere Stimmung) | 193 | -13,81 bp | -15,81 bp | -0,63 | 0,538 |
+| Untere Hälfte (negativere Stimmung) | 152 | +35,58 bp | +33,58 bp | +1,76 | 0,065 |
+
+**Die Hypothese wird nicht gestützt.** Die Aktien mit relativ *negativerer* Stimmung schnitten in diesem Pilot besser ab als die mit positiverer — das Gegenteil der erwarteten Richtung — und selbst dieser Unterschied ist bei p = 0,065 nicht signifikant (übliche Schwelle 0,05, hier ohnehin unter zusätzlicher Mehrfachtestungs-Last, s. u.). Die "positive Stimmung"-Hälfte selbst ist klar nicht profitabel (t = -0,63).
+
+**Einordnung:**
+1. **Kein Hinweis auf einen nutzbaren Zusammenhang zwischen GDELT-Ton und Übernacht-Rendite** — weder in die erwartete noch verlässlich in die gefundene Richtung. Mit n=152/193 und einem p-Wert nahe, aber über 0,05 ist "negative Stimmung schneidet besser ab" am ehesten Rauschen, nicht als neuer Fund zu werten.
+2. **Zusätzliche Mehrfachtestung.** Diese zwei Tests (obere/untere Hälfte) kommen zu den bereits 29 Konfigurationen aus der bisherigen Untersuchung hinzu (27 intraday + 2 Übernacht-Auswahl) → 31 insgesamt. Eine konservative Bonferroni-Schwelle läge bei p < 0,05/31 ≈ 0,0016 — der beste p-Wert hier (0,065) liegt weit darüber.
+3. **Stabilität während der Datensammlung geprüft, nicht nur am Ende.** Zwischenstände bei 17/24 und 22/24 Symbolen zeigten noch ein anderes Bild (17/24: beide Hälften ähnlich, leicht positiv für positive Stimmung; 22/24: bereits die jetzt bestätigte Richtung). Der Vorzeichenwechsel zwischen 17/24 und 22/24 ist selbst ein Beleg dafür, wie instabil ein Ergebnis mit dieser Stichprobengröße ist — ein Grund mehr, dem finalen (24/24) Resultat nicht mehr Gewicht zu geben, als ein p = 0,065 hergibt.
+4. **Datenqualität:** Der ursprüngliche Abruf brach mehrfach an reinen Netzwerk-Timeouts ab (nicht an fehlenden GDELT-Daten) — Ursache war ein echter Bug in `app/data/providers/gdelt.py`: `_get_with_backoff` fing nur HTTP-429-Fehler ab, keine generischen Verbindungsfehler (`URLError`/Timeout). Behoben (jetzt Retry mit Backoff für beide Fehlerarten), 2 neue Regressionstests ergänzt (`test_gdelt.py`, 15/15 grün). Das Ergebnis oben basiert auf dem vollständigen, nach dem Fix geladenen 24-Symbol-Datensatz — nicht auf einem der unvollständigen Zwischenstände.
+
+**Fazit für die Nutzer-Frage ("können wir mit positiven News verbessern?"): Nein, laut diesem Pilot nicht.** Kein belastbares Signal gefunden. Die schon validierte reine Volumen-Auswahl (`OVERNIGHT_SELECTION_PROTOCOL.md`) bleibt der bessere Ausgangspunkt als eine zusätzliche Stimmungs-Filterung — zumindest mit GDELT als Datenquelle. Eine präzisere (kostenpflichtige) Sentiment-API könnte anders abschneiden, ist aber angesichts dieses Null-Ergebnisses kein naheliegender nächster Schritt.
+
 ## Änderungsprotokoll
 
 | Datum | Änderung | Vor/nach Kenntnis von Ergebnissen? |
 |---|---|---|
 | 22.09.2026 | Erstfassung, nach dem 1-2-Firmen-Test der API-Mechanik (Rate-Limit, Datumsbereich, Namensformat — technische Machbarkeitsprüfung, keine inhaltlichen Ergebnisse), vor jeder Stimmungsberechnung oder jedem Vergleichstest | Vorher, bezogen auf das eigentliche Ergebnis. Die API-Mechanik-Tests lieferten keine Information über die Kernfrage (positive vs. negative Stimmung → bessere Rendite). |
+| 23.09.2026 | `_get_with_backoff` (`app/data/providers/gdelt.py`) retryt jetzt auch reine Verbindungsfehler (`URLError`/Timeout) mit Backoff, nicht mehr nur HTTP 429 — vorher brach ein einzelner Netzwerk-Timeout den kompletten Mehr-Symbol-Abruf ab (wiederholt bei DELL/NVR beobachtet). Reiner Robustheits-Fix am Abruf-Client, keine Änderung an Stimmungsberechnung oder Vergleichstest. | Nach mehreren fehlgeschlagenen Abrufversuchen, vor Kenntnis des Endergebnisses auf dem vollständigen 24-Symbol-Datensatz (die Zwischenstände bei 17/24 und 22/24 waren zu diesem Zeitpunkt zwar schon bekannt, aber ausdrücklich als unvollständig markiert, nicht als Ergebnis gewertet). |

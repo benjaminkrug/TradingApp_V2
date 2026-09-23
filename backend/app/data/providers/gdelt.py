@@ -50,11 +50,17 @@ def _chunk_date_range(start: date, end: date, max_span_days: int = _MAX_QUERY_SP
 def _get_with_backoff(
     url: str, max_attempts: int = 6, base_wait: float = 10.0, sleep_fn=time.sleep
 ) -> Optional[str]:
-    """Retries on HTTP 429 with linearly increasing waits (10s, 20s, 30s,
-    ...). Returns None (not an exception) after exhausting attempts, so a
-    single stubborn chunk cannot abort an entire multi-symbol fetch run -
-    callers treat a None chunk as "no data for this window", the same as
-    GDELT returning an empty result.
+    """Retries on HTTP 429 and on transient connection failures (timeouts,
+    connection-refused - anything that is a plain `URLError` rather than an
+    HTTP response) with linearly increasing waits (10s, 20s, 30s, ...).
+    Returns None (not an exception) after exhausting attempts, so a single
+    stubborn chunk cannot abort an entire multi-symbol fetch run - callers
+    treat a None chunk as "no data for this window", the same as GDELT
+    returning an empty result.
+
+    A non-429 HTTP error (e.g. 500) still raises immediately - that is a
+    real error from GDELT, not a transient network hiccup, and retrying it
+    silently would hide a genuine problem.
     """
     for attempt in range(1, max_attempts + 1):
         try:
@@ -62,10 +68,14 @@ def _get_with_backoff(
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return resp.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
-            if exc.code != 429 or attempt == max_attempts:
-                if exc.code == 429:
-                    return None
+            if exc.code != 429:
                 raise
+            if attempt == max_attempts:
+                return None
+            sleep_fn(base_wait * attempt)
+        except urllib.error.URLError:
+            if attempt == max_attempts:
+                return None
             sleep_fn(base_wait * attempt)
     return None
 
