@@ -17,9 +17,9 @@ Alle 11 Phasen aus `ROADMAP.md` Abschnitt 19 sind implementiert (Details unten, 
 ## 2. Git-Stand
 
 - **Branch:** `claude/ai-trading-app-roadmap-w0nrm2`
-- **Letzter Commit:** `4c9d536` (Übernacht-Auswahlstrategie: erster Kandidat, der alle Kriterien besteht)
+- **Letzter Commit:** `d9d56d4` (Fix: `backend-tests`-CI-Job schlug seit mehreren Commits fehl, `httpx`-Import in `test_providers.py` ungeschützt — behoben, CI wieder grün auf allen 4 Jobs)
 - **Remote:** `https://github.com/benjaminkrug/TradingApp_V2`
-- Lokaler Stand und `origin/claude/ai-trading-app-roadmap-w0nrm2` sind deckungsgleich (Stand 21.09.2026).
+- Lokaler Stand und `origin/claude/ai-trading-app-roadmap-w0nrm2` sind deckungsgleich (Stand 23.09.2026), CI grün (`frontend-build`, `backend-tests`, `backend-api-tests`, `probe-nautilus-trader` alle `success`).
 - **Noch kein Pull Request erstellt** — der Branch liegt direkt auf GitHub, aber wurde nie in `main` gemerged. Das ist eine offene Entscheidung: PR erstellen? In `main` mergen? Bisher nicht gefragt/entschieden.
 
 ---
