@@ -41,6 +41,24 @@ mode=timelinevol, query="Apple Inc", 01.–10.06.2026
 - **Kein Test von Nachrichten-Volumen als eigenständigem Auswahlsignal auf dem ganzen Markt** — das war die ursprüngliche Nutzer-Idee, aber bewusst noch nicht Teil dieses ersten, günstigen Piloten (siehe "Wichtiger Unterschied" oben). Bei einem positiven Ergebnis hier wäre eine Ausweitung auf mehr Symbole der nächste Schritt, nicht automatisch der ganze Markt (mehrere tausend Ticker wären bei GDELTs Rate-Limit ein Abruf von vermutlich vielen Stunden bis Tagen).
 - Nur 24 von 503 Aktien — wie beim Stimmungs-Pilot keine Verallgemeinerung ohne Ausweitung.
 
+## Nachtrag 24.09.2026 — Ergebnis
+
+Alle 24 Pilot-Symbole vollständig geladen (24/24 GDELT-Volumen-Dateien). 136 Tage mit ≥2 Pilot-Symbolen in der Top-20-Auswahl und Nachrichten-Volumen-Daten an diesem Tag.
+
+| Gruppe | n | Brutto | Netto @ 2 bp | Bootstrap t | p-Wert |
+|---|---|---|---|---|---|
+| Obere Hälfte (hohes Nachrichten-Volumen) | 178 | +4,59 bp | +2,59 bp | +0,12 | 0,890 |
+| Untere Hälfte (niedriges Nachrichten-Volumen) | 145 | +0,27 bp | -1,73 bp | -0,07 | 0,922 |
+
+**Noch eindeutiger als beim Stimmungs-Pilot: kein Signal.** Beide Hälften liegen praktisch bei Null — die Bootstrap-t-Werte (0,12 und -0,07) sind nahe bei 0, die p-Werte nahe bei 1. Der Unterschied zwischen den Gruppen (4,32 bp brutto) ist verschwindend klein und weit im Rauschen. Anders als beim Stimmungs-Pilot (wo wenigstens ein knapp-nicht-signifikanter Unterschied auftrat) gibt es hier nicht einmal einen erwähnenswerten Trend in eine Richtung.
+
+**Einordnung:**
+1. **Bestätigt die Vermutung aus der Protokoll-Erstfassung:** Nachrichten-Volumen und Handelsvolumen korrelieren vermutlich stark (gemeinsame Ursache: ein echtes Ereignis treibt beides). Innerhalb einer bereits nach Handelsvolumen vorselektierten Gruppe hat Nachrichten-Volumen dadurch kaum noch zusätzlichen Erklärungswert übrig — die Variation, die für die Übernacht-Rendite relevant wäre, ist mit der Handelsvolumen-Auswahl schon weitgehend "verbraucht".
+2. **Sagt nichts über die ursprüngliche, größere Idee des Nutzers aus** (Nachrichten-Volumen als eigenständiges Auswahlsignal über den ganzen Markt, nicht nur als Verfeinerung einer bereits getroffenen Auswahl) — das ist ein anderer, härterer und teurerer Test, der hier bewusst nicht gemacht wurde (siehe "Was dieses Protokoll ausdrücklich nicht leistet").
+3. **Zusätzliche Mehrfachtestung:** Zwei weitere Tests kommen zur Session-Gesamtrechnung hinzu (nach dem Stimmungs-Pilot bei 33) → 35 insgesamt. Bei diesem Nullergebnis spielt das aber keine Rolle — hier gibt es nichts, was eine strengere Korrektur "retten" müsste.
+
+**Fazit:** Nachrichten-Volumen als Verfeinerung der bestehenden Übernacht-Auswahl bringt **nichts** — noch weniger als Stimmung. Wird nicht weiterverfolgt. Die reine Handelsvolumen-Auswahl (`OVERNIGHT_SELECTION_PROTOCOL.md`) bleibt unverändert der beste Ausgangspunkt. Ein Test von Nachrichten-Volumen als eigenständigem Signal auf einem breiteren Universum (nicht nur als Verfeinerung) ist angesichts dieses Nullergebnisses hier auf der bereits volumen-vorselektierten Gruppe kein naheliegender nächster Schritt — wenn überhaupt, müsste er unabhängig vom Handelsvolumen-Signal angelegt werden, was eine deutlich größere (und beim aktuellen GDELT-Rate-Limit langsame) Untersuchung wäre.
+
 ## Änderungsprotokoll
 
 | Datum | Änderung | Vor/nach Kenntnis von Ergebnissen? |
